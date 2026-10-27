@@ -11,6 +11,10 @@ on:
         default: DEVELOPMENT
       machine_config:
         description: xnu MACHINE_CONFIG
+        type: choice
+        options:
+          - SWEET
+          - LAVENDER
         default: SWEET
       keep_going:
         description: make -k (collect all compile errors in one run)
@@ -53,6 +57,16 @@ jobs:
           grep -c 'VALID_ARCHS="x86_64 arm64e arm64"' dxb/build.sh
           ls dxb/patches
 
+      - name: Validate lavender-capable patch set
+        run: |
+          python3 tools/validate-repo.py
+          count=$(find dxb/patches -maxdepth 1 -type f -name '????-*.patch' | wc -l | tr -d ' ')
+          test "$count" = 82
+          test -f dxb/patches/0082-lavender-board-profile.patch
+          grep -Fq 'SUPPORTED_ARM64_MACHINE_CONFIGS' dxb/patches/0082-lavender-board-profile.patch
+          grep -Fq 'MASTER.arm64.lavender' dxb/patches/0082-lavender-board-profile.patch
+          echo "Validated $count project patches; selected MACHINE_CONFIG=$MACHINE_CONFIG"
+
       - name: Deps
         run: |
           brew install jq gum bash cmake ninja
@@ -74,45 +88,27 @@ jobs:
           MAKEFLAGS: ${{ inputs.keep_going == 'false' && '' || '-k' }}
         run: bash build.sh
 
-      - name: Package build tree for local compiles
-        if: always()
+      - name: Verify all project patches were applied
+        if: success()
         run: |
-          # Generated headers, config option headers, mig output and the patched
-          # source: enough to re-run any single compile command from the log locally.
-          SDK=$(xcrun --sdk macosx --show-sdk-path)
-          mkdir -p sdk-kernel-platform
-          cp -R "$SDK/System/Library/Frameworks/Kernel.framework/Versions/A/PrivateHeaders/platform" sdk-kernel-platform/ || true
-          tar czf buildtree.tgz \
-            --exclude='*.o' --exclude='*.cpo' --exclude='*.a' --exclude='*.dSYM' --exclude='*.unstripped' \
-            --exclude='kernel.development.*' --exclude='.git' \
-            -C dxb build/xnu.obj fakeroot/usr/local/include xnu \
-            -C .. sdk-kernel-platform
-          ls -la buildtree.tgz
-
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: xnu-buildtree
-          path: buildtree.tgz
-          retention-days: 7
-
-      - name: Inspect closed KDK support libs
-        if: always()
-        run: |
-          mkdir -p out/kdk-libs
-          for lib in /Library/Developer/KDKs/*/System/Library/KernelSupport/lib*.a; do
-            b=$(basename "$lib" .a)
-            ar t "$lib" > "out/kdk-libs/$b.members.txt" 2>&1 || true
-            nm -m "$lib" > "out/kdk-libs/$b.nm.txt" 2>&1 || true
-            lipo -info "$lib" >> out/kdk-libs/arch.txt 2>&1 || true
+          expected="${MACHINE_CONFIG,,}"
+          test -e "dxb/xnu/config/MASTER.arm64.${expected}"
+          failed=0
+          for patch in dxb/patches/????-*.patch; do
+            if ! git -C dxb/xnu apply --reverse --check "$GITHUB_WORKSPACE/$patch" >/dev/null 2>&1; then
+              echo "ERROR: project patch was not applied: $patch"
+              failed=1
+            fi
           done
-          ls -la out/kdk-libs
+          test "$failed" = 0
+          echo "All 82 project patches are applied; MASTER.arm64.${expected} exists"
 
-      - name: Collect
+      - name: Collect kernel artifact
         if: always()
         run: |
           mkdir -p out
           cp -R dxb/fakeroot/System/Library/Kernels/. out/ 2>/dev/null || true
+          find out -type f ! -name 'kernel.*' -delete
           ls -la out
           (cd out && shasum -a 256 kernel.* > SHA256SUMS) || true
 
