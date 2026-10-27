@@ -13,6 +13,7 @@ BOOT_LIMIT = 64 * 1024 * 1024
 RAM_BASE = 0x80000000
 RAM_END = 0x85600000
 XNU_END = 0x85600000
+ABL = (0x9FA00000, 0x9FA22000)
 FIXED = ((0x85600000, 0x85700000), (0x85700000, 0x85800000),
          (0x85800000, 0x88F00000), (0x8AC00000, 0x92A00000),
          (0x92A00000, 0x94800000), (0x94800000, 0x94A00000),
@@ -73,17 +74,21 @@ def main() -> None:
     rd_flash = PAGE + align(h[0])
     assert boot[rd_flash:rd_flash + h[2]] == srd
     load = args.base + h[1]; kernel_end = load + h[0]
+    shim_end = load + len(raw)
     rd_start = args.base + h[3]; rd_end = rd_start + h[2]
     assert load >= RAM_BASE and kernel_end <= RAM_END
     assert kernel_end <= rd_start or rd_end <= load
     assert all(kernel_end <= lo or hi <= load for lo, hi in FIXED)
     assert all(rd_end <= lo or hi <= rd_start for lo, hi in FIXED)
+    assert shim_end <= ABL[0] or ABL[1] <= load
+    assert rd_end <= ABL[0] or ABL[1] <= rd_start
     print(f"OK: gzip+2 stock FDTs+stock ramdisk; boot={len(boot)} bytes")
     print(f"SHA256 boot={hashlib.sha256(boot).hexdigest()}")
     print(f"SHA256 ramdisk={hashlib.sha256(srd).hexdigest()}")
     print(f"SHA256 dtb1={hashlib.sha256(first).hexdigest()} SHA256 dtb2={hashlib.sha256(second).hexdigest()}")
-    print(f"hypothetical shim={load:#x}..{kernel_end:#x}; ramdisk={rd_start:#x}..{rd_end:#x}")
-    print(f"BLOCKED: ramdisk lies in XNU-managed window {rd_start:#x}..{rd_end:#x} < {XNU_END:#x}")
+    print(f"hypothetical packed={load:#x}..{kernel_end:#x}; decompressed shim={load:#x}..{shim_end:#x}; ramdisk={rd_start:#x}..{rd_end:#x}")
+    print(f"DIAGNOSTIC PASS: no shim/ramdisk/ABL/fixed-reserved overlap under base={args.base:#x}")
+    print(f"XNU NOTE: ramdisk lies in future XNU-managed window {rd_start:#x}..{rd_end:#x} < {XNU_END:#x}")
 
 
 if __name__ == "__main__":

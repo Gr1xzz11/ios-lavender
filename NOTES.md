@@ -38,10 +38,12 @@
 - Result: boot 1683456 bytes, `kernel_size=996479`, gzip stream 653 bytes,
   `ramdisk_size=676352`, boot SHA256
   `4e1911686c721abc18210e39a9a4ce0bb531c58fbd70317e9aad41e665a6cead`.
-- Hypothetical base `0x80000000`: shim
-  `0x80008000..0x800fb47f`, ramdisk `0x81000000..0x810a5200`; no mutual
-  overlap, but ramdisk overlaps the XNU-managed window. Status is NO-GO for
-  XNU and no launch is proposed.
+- Reclassified the previous XNU-based NO-GO: for shim-only diagnostics the
+  ranges do not overlap each other, the known ABL load range
+  `0x9fa00000..0x9fa22000`, or fixed reserved-memory. The ramdisk overlap with
+  the future XNU-managed window is a separate XNU limitation, not a shim
+  safety blocker. Unknown ABL dynamic buffers, gzip handling and DTB handoff
+  remain compatibility risks.
 
 ### >>> UPDATE 2026-10-27: lavender first-boot preflight <<<
 
