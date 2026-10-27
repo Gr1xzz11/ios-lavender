@@ -50,6 +50,19 @@
   with an ordered application manifest emitted by strictified dxb. This is a
   verification fix, not a new XNU compile result.
 
+### >>> UPDATE 2026-10-27: strict patch application caught 0067 context drift <<<
+
+- The next strictified run stopped before compilation at patch 0067:
+  `osfmk/console/serial_console.c:268` no longer matched.
+- Root cause: patch 0067's lavender-expanded context was not mirrored in the
+  two serial-console guards introduced by patch 0047. The source tree itself
+  was otherwise applying cleanly.
+- Expanded both 0047 guards to SWEET/LAVENDER. A fresh Linux replay against
+  xnu-8796.141.3 now applies every non-staged project patch through 0082;
+  0031 and 0041 remain intentionally skipped in this replay because they
+  target the HFS tree staged by 0026-stage-hfs.sh.
+- Whitespace warnings in 0006, 0049 and 0058 are non-fatal and unchanged.
+
 ### >>> UPDATE 2026-10-27: fixed XNU LAVENDER machine-config rejection <<<
 
 - CI root cause: `0082-lavender-board-profile.patch` had invalid unified-diff
