@@ -153,6 +153,41 @@ USB как канал ранней диагностики не реализов�
 
 ## ABL lavender: результат поиска и границы доказательства
 
+### Целевой статический анализ локального `abl.elf`
+
+Добавлен воспроизводимый bounded-анализатор
+`tools/analyze-lavender-abl.py`. Для локального файла он подтверждает:
+
+```
+ELF32 ARM ET_EXEC, entry=0x9fa00000
+PT_LOAD file 0x3000..0x25000, paddr 0x9fa00000..0x9fa22000, RWE
+FV signature at 0x3028, FV start 0x3000, length 0x22000, header 0x48
+FFS type 0x0b (FV_IMAGE)
+```
+
+У вложенного FFS первый section — стандартный GUID-defined type `0x02`, с
+`data_offset=0x18` и vendor-defined payload. Внутри этого payload нет
+доступного PE/TE/обычного ARM-кода: ELF не содержит section headers и
+символов, а в load payload не найдены `ANDROID!`, FDT magic `d00dfeed` или
+ARM64 Image magic. Единственное совпадение с little-endian `0x01000000`
+находится внутри контейнерного заголовка и не является доказательством
+использования `ramdisk_addr`.
+
+Следовательно, этот конкретный файл не позволяет доказать ни один из
+интересующих Android handoff-вопросов: обработку `ramdisk_size=0`, вычисление
+физического адреса ARM64 kernel, использование `kernel_addr`/`ramdisk_addr`/
+`tags_addr`, источник DTB, регистры передачи DTB или дополнительные проверки
+shim. Установлен только адрес размещения и entry самого ABL (`0x9fa00000`),
+что не связано с адресом kernel.
+
+Это граница статического доказательства, а не утверждение, что ABL не
+поддерживает нужный формат: payload, вероятно, содержит vendor-defined или
+упакованный слой, но его алгоритм упаковки/ключи/внутренний loader отсутствуют
+в recovery-артефакте. Для снятия блокера нужен matching fastboot ABL с
+доступным LinuxLoader/PE или symbols, либо контролируемый read-only запуск с
+наблюдением ABL-лога и ранних регистров; новый boot image для этого шага не
+создавался.
+
 ### Экспериментальный v1 без ramdisk
 
 Добавлен отдельный `shim/build-lavender-diag-noramdisk.sh`. Он создаёт

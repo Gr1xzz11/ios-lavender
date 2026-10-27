@@ -1,5 +1,21 @@
 # iOS 16 on sweet (Redmi Note 10 Pro, SM7150) - working notes
 
+### >>> UPDATE 2026-10-27: targeted lavender ABL reverse engineering <<<
+
+- Added `tools/analyze-lavender-abl.py` and a regression test. The local
+  `research/lavender/firmware/abl.elf` is stripped ELF32 ARM ET_EXEC with
+  entry/load `0x9fa00000..0x9fa22000`, containing a bounded 0x22000 FV.
+- The FV has an FFS type `0x0b` file whose first section is a standard
+  GUID-defined section (`type=0x02`, `data_offset=0x18`) containing a
+  vendor-defined/packed-looking payload. No
+  `ANDROID!`, valid DTB magic, ARM64 Image magic, symbols, or recoverable
+  loader strings were found. A `0x01000000` byte-pattern hit is inside a
+  container header and is not evidence of ramdisk handling.
+- Exact answers about zero ramdisk, kernel physical relocation, DTB source,
+  header address fields, register handoff, and shim checks remain BLOCKED.
+  The only proven address is the ABL's own load/entry address, not the kernel
+  address. No boot image was created and no CI run is needed.
+
 ### >>> UPDATE 2026-10-27: lavender zero-ramdisk v1 experiment <<<
 
 - AOSP v1 specifies a non-empty ramdisk; its current `mkbootimg.py` can still
