@@ -33,6 +33,37 @@
   фактический ABL handoff:
   [Linux arm64 booting](https://kernel.org/doc/html/v5.17/arm64/booting.html).
 
+## ABL lavender: результат поиска и границы доказательства
+
+В локальных файлах, подкаталогах рабочего дерева, `/tmp` и доступных локальных
+носителях подходящего `abl.elf`, `abl.img` или fastboot-архива lavender не
+найдено. Поэтому закрытый ABL Redmi Note 7 статически не анализировался и
+выводы ниже не следует приписывать именно его реализации.
+
+Безопасный исходный артефакт для следующего шага — официальный fastboot ROM
+для `lavender`, региона и ветки, соответствующих `backup/lavender-boot.img`,
+полученный через [Xiaomi ROM Download portal](https://c.mi.com/global/miuidownload/index)
+(на странице модели выбрать Fastboot Update). Из распакованного архива нужен
+только ABL из `images/` или `firmware-update/` — в Xiaomi-пакетах он обычно
+называется `abl.img`; это может быть ELF без суффикса `.elf`. Перед анализом
+нужно проверить `file`, `readelf -h`, SHA-256 и board/version strings. Нельзя
+считать подходящим ABL от `sweet`, другого SoC, другого региона/ветки или
+неизвестного boot chain.
+
+Стоковый дамп имеет `os_version=0x14000158`, что декодируется как Android 10,
+patch year 2021, month 8. Это полезный ориентир совместимости, но не доказано,
+что он совпадает с версией ABL: в `boot.img` ABL не хранится.
+
+Открытая Qualcomm LK-реализация показывает обычную схему `boot_linux()` с
+`hdr->kernel_addr`, `hdr->ramdisk_addr` и `hdr->tags_addr`, но это source-level
+аналог, а не lavender ABL. Поэтому подтверждено только следующее:
+
+* в нашем v1 header физический offset/load field равен `0x8000`;
+* при гипотезе ABL base `0x80000000` арифметический адрес образа был бы
+  `0x80008000`, а entry — тем же адресом (`_head=0`);
+* абсолютные base, DTB placement и сохранение `x0` закрытым lavender ABL не
+  подтверждены; `0x80008000` нельзя объявлять фактом.
+
 ## Изменения
 
 `shim/build-lavender-diag.sh` собирает отдельный arm64 Linux Image и
@@ -74,15 +105,21 @@ placement этим не подтверждаются.
 `llvm-objcopy` (системного `aarch64-linux-gnu-gcc` нет):
 
 ```
-OK: Android v1, page=4096, kernel=17232, no embedded DTB
+OK: Android v1, page=4096, kernel=18384, no embedded DTB
+OK: v1 fields match stock; header kernel_addr=0x8000; physical base/DTB placement unresolved by header
 ```
 
-`tools/validate-repo.py` прошёл: 81 patch, 16 Python tools, 8 shell scripts.
+Дополнительный отрицательный тест с явной гипотезой
+`--ram-base 0x80000000` выводит `0x80008000..0x8000c7d0`, `_start=0x80008040`
+и стек до `0x8000c7d0`; это проверка арифметики и границ образа, не проверка
+ABL. `tools/validate-repo.py` прошёл: 81 patch, 17 Python tools, 8 shell
+scripts. `git diff --check` прошёл.
 Телефон не подключался; fastboot/adb/write операции не выполнялись.
 
 ## Риски и следующий этап
 
-- Не подтверждено, что ABL передаёт DTB в `x0` для такого образа.
+- Не найден локальный lavender ABL; не подтверждены его версия, физическая
+  relocation base, DTB placement и передача DTB в `x0`.
 - Не подтверждены clock/pinctrl и доступность UART после handoff; при
   выключенном UART маркер не будет виден.
 - Не доказаны фактические load/entry адреса, stack range и непересечение

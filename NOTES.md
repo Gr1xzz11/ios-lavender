@@ -26,7 +26,11 @@
   UART-off/pinctrl-off behavior is documented as no-log/no-proof; no fallback
   channel exists (JTAG/ICE is not confirmed) and no phone operation was performed.
 - Commit: `0a8d620` (`lavender: add diagnostic preflight audit`).
-- Commit: `43576a2` (`lavender: make boot address preflight explicit`).
+- Commit: `0578342` (`lavender: make boot address preflight explicit`).
+- No local `abl.elf`/`abl.img` or lavender fastboot archive was found. The
+  official Xiaomi ROM portal is the safe source; exact package must match
+  lavender/region/boot version. `0x80008000` remains only the explicit
+  `0x80000000 + kernel_addr` hypothesis.
 
 ## Agent handoff / active work (2026-10-15, latest)
 
