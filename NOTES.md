@@ -39,6 +39,22 @@
 - No boot image or CI run: this change is ADT/preflight-only and does not alter
   the compiled XNU kernel.
 
+### >>> UPDATE 2026-10-27: lavender first-launch layout audit <<<
+
+- With the successful kernel artifact and restricted ADT, computed layout is:
+  kernel `0x81004000..0x820ac000`, ADT `0x820ac000..0x820ade00`, boot_args
+  `0x820b0000..0x820b4000`, `topOfKernelData=0x820b4000`,
+  `avail_end=0x85600000`, entry PA `0x81487488`.
+- XNU Mach-O interrupt/exception stack symbols translate to `0x81c94000`
+  through `0x81ca4000`, inside the window and outside fixed reservations.
+- Added `tools/preflight-lavender-layout.py` and
+  `tools/test-lavender-layout.py`. They verify segment/metadata/stacks,
+  loader ramdisk-overlap guard and the sweet-only build-chain markers.
+- BLOCKED remains: if ABL base is hypothesized as `0x80000000`, stock
+  `ramdisk_addr=0x01000000` lands at `0x81000000` and overlaps the managed
+  window. ABL physical relocation, ramdisk destination and DTB handoff remain
+  unverified; no boot image is prepared.
+
 ### >>> UPDATE 2026-10-27: lavender CI link failure analyzed <<<
 
 - Archive `logs_109729891426.zip` is the run for commit `e57e910`; preflight,

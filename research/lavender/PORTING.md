@@ -50,6 +50,47 @@ args помещаются в это окно. Полная физическая 
 только для этого проверенного ограниченного окна; boot image по-прежнему не
 создаётся до отдельной проверки ABL ramdisk placement.
 
+## Полный layout-аудит первого XNU payload
+
+Для артефакта run `40487392402` и lavender ADT рассчитаны следующие адреса:
+
+```
+kernel:    0x81004000..0x820ac000
+ADT:       0x820ac000..0x820ade00
+boot_args: 0x820b0000..0x820b4000
+avail_end: 0x85600000
+entry:     VA 0xfffffe0007487488 -> PA 0x81487488
+```
+
+Символы XNU stack из Mach-O также попадают в окно: interrupt stack
+`0x81c94000..0x81c9c000`, exception stack `0x81ca0000..0x81ca4000`.
+Это проверяет relocation math и отсутствие пересечений, но не доказывает, что
+ABL действительно разместил shim по ожидаемой физической базе.
+
+Критический конфликт: при распространённой гипотезе `ABL base=0x80000000`
+stock `ramdisk_addr=0x01000000` указывает примерно на `0x81000000`, внутри
+XNU-managed window и рядом с kernel destination. `shim/loader.c` корректно
+откажется от такого пересечения; считать payload запускаемым без фактического
+ABL ramdisk placement нельзя. `shim/build.sh` также остаётся sweet-only:
+Android v2, embedded sweet DTB, framebuffer и UFS.
+
+Дополнительные проверки находятся в `tools/preflight-lavender-layout.py` и
+`tools/test-lavender-layout.py`. Без ABL-доказательства preflight сохраняет
+`BLOCKED`.
+
+86 MiB достаточно для размещения текущего Mach-O, ADT, boot_args и штатных
+XNU stack symbols с большим запасом до `avail_end`. Но это не доказательство
+полного XNU startup: pmap bootstrap allocates metadata proportional to
+`memSize`, а итоговый запас и runtime allocations требуют собранного XNU и
+наблюдаемого handoff. Отдельно остаётся риск dynamic `shared-dma-pool`, если
+ABL передаст уже занятые Linux carve-out’ы.
+
+Для снятия BLOCKED нужны конкретные read-only подтверждения: ABL static
+analysis для lavender с фактическими kernel/ramdisk destination и DTB pointer,
+либо временный shim UART/другой наблюдаемый канал, который распечатает
+`x0`, initrd range и PC до перехода в XNU. Header v1 и `kernel_addr=0x8000`
+этого не подтверждают.
+
 ## Подтверждено локальными артефактами
 
 - `backup/lavender-boot.img` имеет Android boot header v1, page size 4096,
