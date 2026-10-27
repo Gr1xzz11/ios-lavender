@@ -61,6 +61,8 @@ jobs:
         run: |
           python3 tools/validate-repo.py
           python3 tools/test-xnu-machine-config.py
+          python3 tools/preflight-xnu.py --patch-dir dxb/patches --machine-config "$MACHINE_CONFIG"
+          python3 tools/strictify-dxb.py dxb/build.sh
           count=$(find dxb/patches -maxdepth 1 -type f -name '????-*.patch' | wc -l | tr -d ' ')
           test "$count" = 82
           test -f dxb/patches/0082-lavender-board-profile.patch

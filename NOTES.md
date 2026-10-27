@@ -25,6 +25,26 @@
   ARM64_BOARD_CONFIG_LAVENDER`; added static assertions for both patch sets.
 - Local validation passes. Next: commit, push and rerun the same workflow.
 
+### >>> UPDATE 2026-10-27: fast XNU preflight added <<<
+
+- The third run `40483986729` is still compiling commit `2fed696`; its final
+  result is pending and will be recorded separately.
+- The two completed failures group into two root causes: a SWEET-only timer
+  definition/prototype at compile time, then two SWEET-only shared helper
+  definitions at link time. The recurring external dxb warnings for
+  `TrustCache.patch`, `iobuffermemd_monterey.patch`, `skywalk_sonoma.patch` and
+  `syntax_checker_sonoma.patch` are unrelated to this numbered project set.
+- Added `tools/preflight-xnu.py`: Linux-friendly inventory, all-hunk format,
+  lavender config, shared-symbol guard and host-tool checks. It can also run
+  `git apply --check` against a prepared XNU tree; this host has no XNU checkout
+  or Apple SDK, so that mode was not claimed locally.
+- Added `tools/strictify-dxb.py`; the generated dxb build now fails immediately
+  when one of the 82 project patches is skipped instead of compiling a partial
+  tree. Workflow runs both tools before the heavy build.
+- No local Clang component compile is available: this Linux environment has no
+  `clang`/Apple SDK; `tools/xnu-cc.py` remains suitable when a CI compile log
+  and Apple-fork Clang are available.
+
 ### >>> UPDATE 2026-10-27: fixed XNU LAVENDER machine-config rejection <<<
 
 - CI root cause: `0082-lavender-board-profile.patch` had invalid unified-diff

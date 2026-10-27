@@ -5,6 +5,9 @@ from pathlib import Path
 
 
 PATCH = Path(__file__).parents[1] / "xnu/patches/0082-lavender-board-profile.patch"
+PREFLIGHT = Path(__file__).parents[1] / "tools/preflight-xnu.py"
+STRICTIFY = Path(__file__).parents[1] / "tools/strictify-dxb.py"
+WORKFLOW = Path(__file__).parents[1] / ".github/workflows/xnu.yml"
 HUNK = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 
 
@@ -19,7 +22,7 @@ def check_hunks(text):
         new_expected = int(match.group(4) or "1")
         old_count = new_count = 0
         for body in lines[index + 1:]:
-            if body.startswith("@@ ") or body.startswith("diff --git "):
+            if body.startswith(("@@ ", "diff --git ", "--- ", "+++ ")):
                 break
             if body and body[0] in " -":
                 old_count += 1
@@ -34,6 +37,15 @@ def check_hunks(text):
 
 
 text = PATCH.read_text(encoding="utf-8")
+assert PREFLIGHT.exists()
+assert "--patch-dir" in PREFLIGHT.read_text(encoding="utf-8")
+assert "sweet_console_muted" in PREFLIGHT.read_text(encoding="utf-8")
+assert "sweet_sample_task" in PREFLIGHT.read_text(encoding="utf-8")
+assert STRICTIFY.exists()
+assert "Project patch failed" in STRICTIFY.read_text(encoding="utf-8")
+workflow = WORKFLOW.read_text(encoding="utf-8")
+assert "tools/preflight-xnu.py --patch-dir dxb/patches" in workflow
+assert "tools/strictify-dxb.py dxb/build.sh" in workflow
 check_hunks(text)
 assert "SUPPORTED_ARM64_MACHINE_CONFIGS = BCM2837 T6000 T8101 T8103 VMAPPLE SWEET LAVENDER" in text
 assert "MACHINE_FLAGS_ARM64_LAVENDER" in text
