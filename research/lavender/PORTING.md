@@ -214,6 +214,28 @@ ABL к ARM64 Image. Возврат USB fastboot после команды уси
 
 ### Экспериментальный v1 без ramdisk
 
+#### DTB-only candidate
+
+Собран отдельный кандидат
+`shim/out/lavender-diag-dtb-noramdisk/lavender-diag-dtb-boot-noramdisk.img`:
+raw ARM64 Image shim плюс два stock FDT подряд, при `ramdisk_size=0`. Размеры
+FDT: `481753` и `514073` байта; SHA-256 соответственно
+`1ada82bafb433f6369cd50fca6763b908881f618c8216d1a0325e4120e11f41d` и
+`aa106624b6d313dcb8b75a558d81b54814a7887fe2fe86921f2d455b11154019`. Полный
+kernel payload: `1014210` байт; boot image: `1019904` байта; SHA-256 boot:
+`f1b65bc2205019ec99c87d3b3d4e641feb77473f092fe1e761f3d8895416bccb`.
+
+`tools/check-lavender-diag-dtb.py` проверяет точное совпадение appended bytes
+со stock, порядок и totalsize обоих FDT, структуру `/struct`/`/strings`, v1
+header, нулевой ramdisk, 64 MiB boot limit и гипотетическое размещение
+`0x80008000..0x800ff9c2` внутри проверенного раннего окна. Последний адрес —
+только арифметическая гипотеза; ABL base не подтверждён.
+
+Статически raw ARM64 Image распознаётся как валидный Linux Image, но из
+доступных данных нельзя установить, принимает ли закрытый ABL именно raw
+payload с appended FDT или требует gzip-обёртку/собственный DTB handoff.
+Кандидат подготовлен для одного будущего эксперимента, но не запускался.
+
 Добавлен отдельный `shim/build-lavender-diag-noramdisk.sh`. Он создаёт
 структурный кандидат через `mkbootimg --header_version 1 --ramdisk /dev/null`.
 Локальный результат имеет размер 24576 байт, `ramdisk_size=0`,
