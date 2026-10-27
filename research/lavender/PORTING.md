@@ -91,6 +91,31 @@ analysis для lavender с фактическими kernel/ramdisk destination 
 `x0`, initrd range и PC до перехода в XNU. Header v1 и `kernel_addr=0x8000`
 этого не подтверждают.
 
+## Lavender XNU shim
+
+Добавлен отдельный путь `shim/build-lavender-xnu.sh` и файлы
+`lavender_start.S`, `lavender_loader.c`, `lavender_console.c`, `lavender.ld`.
+Он не включает sweet framebuffer, UFS, GIC, timer или PSCI. UART использует
+только подтверждённые offsets UARTDM и gated TX polling; clock/pinctrl не
+трогаются. Если UART clock/pins не подготовлены ABL, логов не будет.
+
+Loader проверяет magic/version/границы payload, segment table, каждый source и
+destination range, lavender memory contract, DTB totalsize, DTB↔ramdisk
+пересечение, ramdisk↔XNU window пересечение и запас под ADT/boot_args. После
+подготовки `boot_args` он сохраняет MMU/cache-off handoff и передаёт управление
+XNU `entry_pa` с физическим `boot_args` в `x0`; bootstrap MMU настраивает
+`start_first_cpu` XNU, а не shim.
+
+Локально собраны компоненты: ARM64 Image (`36 KiB`, включая zero-filled
+ранний stack), ELF shim и payload (`15.7 MiB`). Android wrapper v1 намеренно не создаётся: stock ramdisk
+гипотеза `base+0x01000000` пересекает XNU-managed window, а фактический ABL
+base/ramdisk/DTB placement не подтверждён.
+
+USB как канал ранней диагностики не реализован. Найденные USB-патчи содержат
+только sweet-подтверждённые DWC3/QUSB2/QSCRATCH адреса и не могут переноситься
+на lavender. До отдельной проверки lavender USB controller/clock/pinctrl
+единственный предусмотренный канал shim — UART; fallback без UART не заявлен.
+
 ## Подтверждено локальными артефактами
 
 - `backup/lavender-boot.img` имеет Android boot header v1, page size 4096,

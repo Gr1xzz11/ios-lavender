@@ -36,6 +36,22 @@ static uintptr_t skip_str(uintptr_t p)
 	return p + 1;
 }
 
+int fdt_blob_size(uintptr_t fdt, uint64_t *size)
+{
+	if (!fdt || be32(fdt) != FDT_MAGIC)
+		return 0;
+	uint32_t total = be32(fdt + 4);
+	uint32_t struct_off = be32(fdt + 8);
+	uint32_t strings_off = be32(fdt + 12);
+	uint32_t strings_size = be32(fdt + 32);
+	uint32_t struct_size = be32(fdt + 36);
+	if (total < 40 || struct_off > total || strings_off > total ||
+	    struct_size > total - struct_off || strings_size > total - strings_off)
+		return 0;
+	*size = total;
+	return 1;
+}
+
 int fdt_chosen_u64(uintptr_t fdt, const char *prop, uint64_t *out)
 {
 	if (!fdt || be32(fdt) != FDT_MAGIC)

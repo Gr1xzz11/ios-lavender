@@ -55,6 +55,22 @@
   window. ABL physical relocation, ramdisk destination and DTB handoff remain
   unverified; no boot image is prepared.
 
+### >>> UPDATE 2026-10-27: lavender XNU shim components <<<
+
+- Added an isolated lavender shim/build path: `shim/build-lavender-xnu.sh`,
+  `lavender_start.S`, `lavender_loader.c`, `lavender_console.c`, and linker
+  script. It uses no sweet framebuffer/UFS/GIC/PSCI code and leaves MMU/cache
+  off for XNU's `start_first_cpu`.
+- Loader validates payload/segments, DTB size and overlaps, ramdisk/window
+  conflicts, and zeroes `Boot_Video`; it passes physical boot_args in x0 and
+  computes the PIE entry PA from the payload delta.
+- Local Linux build succeeds: padded ARM64 Image 36 KiB (header image_size
+  matches file, including early stack), ELF shim, and 15.7 MiB payload. v1 Android wrapper is intentionally withheld because ABL ramdisk
+  placement is unresolved.
+- USB is not claimed as a lavender diagnostic path: existing USB patches are
+  sweet-specific DWC3/QUSB2/QSCRATCH code. UART remains optional and depends
+  on ABL clock/pinctrl state.
+
 ### >>> UPDATE 2026-10-27: lavender CI link failure analyzed <<<
 
 - Archive `logs_109729891426.zip` is the run for commit `e57e910`; preflight,
