@@ -261,10 +261,12 @@ SHA256 ramdisk:   79dc913a3e05b519c1b231014b03aa1ddf5a16ebeef908f8604c37fcfd9e2c
 ramdisk equality, header/cmdline, boot-размер и fixed-reserved intersections.
 При явной гипотезе ABL base `0x80000000` shim занимает
 `0x80008000..0x800fb47f`, ramdisk — `0x81000000..0x810a5200`; они не
-пересекаются. Но ramdisk находится внутри XNU-managed окна
-`0x80000000..0x85600000`, поэтому для запуска XNU кандидат имеет прямой
-конфликт и статус `NO-GO`. Абсолютный ABL base также не доказан. Запуск не
-предлагается.
+пересекаются. Эти диапазоны также не пересекаются с известным ABL load
+диапазоном `0x9fa00000..0x9fa22000` или fixed reserved-memory. Поэтому для
+shim-only диагностики memory preflight проходит. Отдельное ограничение:
+ramdisk находится внутри будущего XNU-managed окна; это блокирует XNU-путь,
+но не является блокером для этого shim-only образа. Абсолютный ABL base и
+динамические ABL buffers всё ещё не доказаны.
 
 Добавлен отдельный `shim/build-lavender-diag-noramdisk.sh`. Он создаёт
 структурный кандидат через `mkbootimg --header_version 1 --ramdisk /dev/null`.
