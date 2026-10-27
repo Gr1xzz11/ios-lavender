@@ -27,7 +27,10 @@ truncate -s "$size" "$OUT/Image"
 mkbootimg --header_version 1 --kernel "$OUT/Image" --ramdisk "$OUT/ramdisk.bin" \
 	--base 0 --kernel_offset 0x8000 --ramdisk_offset 0x1000000 \
 	--tags_offset 0x100 --pagesize 4096 --os_version 12.0.0 \
-	--os_patch_level 2022-01 --cmdline "console=ttyMSM0,115200n8" \
+	--os_patch_level 2022-01 \
+	--cmdline "console=ttyMSM0,115200,n8 earlycon=msm_serial_dm,0xc170000" \
 	-o "$OUT/lavender-diag-boot.img"
 python3 ../tools/check-lavender-diag.py "$OUT/lavender-diag-boot.img" "$OUT/Image"
+python3 ../tools/preflight-lavender-diag.py ../backup/lavender-boot.img \
+	"$OUT/lavender-diag-boot.img" "$OUT/diag.elf" --nm "$NM"
 ls -l "$OUT/Image" "$OUT/lavender-diag-boot.img"

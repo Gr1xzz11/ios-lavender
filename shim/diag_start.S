@@ -22,9 +22,12 @@ _head:
 	.globl _start
 _start:
 	msr	daifset, #0xf
+	/* Preserve all conventional boot arguments before using x1/x2 below. */
+	mov	x19, x0
+	mov	x20, x1
+	mov	x21, x2
 	adr	x1, _stack_top
 	mov	sp, x1
-	mov	x19, x0
 	adr	x1, _bss_start
 	adr	x2, _bss_end
 1:
@@ -32,8 +35,11 @@ _start:
 	b.hs	2f
 	str	xzr, [x1], #8
 	b	1b
+
 2:
 	mov	x0, x19
+	mov	x1, x20
+	mov	x2, x21
 	bl	diag_main
 3:
 	wfe

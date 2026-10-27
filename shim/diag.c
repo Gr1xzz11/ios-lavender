@@ -37,15 +37,22 @@ static void uart_hex(uint64_t value)
 		uart_putc(hex[(value >> shift) & 0xf]);
 }
 
-void diag_main(uint64_t fdt)
+static void uart_label_hex(const char *label, uint64_t value)
+{
+	uart_str(label);
+	uart_hex(value);
+	uart_str("\r\n");
+}
+
+void diag_main(uint64_t arg0, uint64_t arg1, uint64_t arg2)
 {
 	uart_str("LAVENDER-DIAG:entry\r\n");
-	uart_str("FDT=0x");
-	uart_hex(fdt);
-	uart_str(" MPIDR=0x");
+	uart_label_hex("ARG0=0x", arg0);
+	uart_label_hex("ARG1=0x", arg1);
+	uart_label_hex("ARG2=0x", arg2);
 	uint64_t mpidr;
 	__asm__ volatile("mrs %0, mpidr_el1" : "=r"(mpidr));
-	uart_hex(mpidr);
+	uart_label_hex("MPIDR=0x", mpidr);
 	uart_str("\r\nLAVENDER-DIAG:stack-bss\r\n");
 	for (;;)
 		__asm__ volatile("wfe");

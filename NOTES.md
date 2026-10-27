@@ -18,6 +18,13 @@
 - Details and blockers: `research/lavender/PORTING.md`. Next is source/read-only
   confirmation of ABL x0 DTB handoff and UART clock/pinctrl state; no physical action
   is authorized by this milestone.
+- Preflight audit added `tools/preflight-lavender-diag.py`. Fresh result after
+  ARG0/ARG1/ARG2 handoff instrumentation and cmdline fix: v1 fields match stock;
+  conditional load `0x80008000..0x8000c7d0`, entry `0x80008000`, `_start`
+  `0x80008040`, stack top `0x8000c7d0`, reserved start `0x85700000`.
+  UART-off/pinctrl-off behavior is documented as no-log/no-proof; no fallback
+  channel exists and no phone operation was performed.
+- Commit: `0a8d620` (`lavender: add diagnostic preflight audit`).
 
 ## Agent handoff / active work (2026-10-15, latest)
 

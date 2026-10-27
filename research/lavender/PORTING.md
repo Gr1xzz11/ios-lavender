@@ -27,15 +27,30 @@ PSCI, UFS или framebuffer. Перед записью shim ограничен�
 подтверждены DTS, offsets подтверждены upstream Linux Qualcomm UARTDM driver;
 clock/pinctrl после ABL всё ещё требуют hardware-проверки.
 
-Наблюдаемый вывод: `LAVENDER-DIAG:entry`, адрес FDT, MPIDR и
-`LAVENDER-DIAG:stack-bss`. Бесконечный `wfe` после маркера не считается
-успешной загрузкой.
+Наблюдаемый вывод: `LAVENDER-DIAG:entry`, исходные `ARG0`, `ARG1`, `ARG2`,
+MPIDR и `LAVENDER-DIAG:stack-bss`. Это позволяет проверить, в каком именно
+аргументе ABL передал DTB, вместо принятия x0 за факт. Бесконечный `wfe` после
+маркера не считается успешной загрузкой.
 
 `tools/check-lavender-diag.py` проверяет header v1, адреса lavender, отсутствие
 second stage/embedded DTB, размер kernel и arm64 Image header. Sweet
 `shim/build.sh`, `tools/mkadt.py` и `tools/mkpayload.py` остаются отдельным
 sweet/XNU pipeline; перенос synthetic ADT на lavender до подтверждения layout
 был бы предположением.
+
+`tools/preflight-lavender-diag.py` дополнительно сравнивает структурные поля
+с `backup/lavender-boot.img` и проверяет ELF symbols. При условном mapping
+`RAM base 0x80000000 + header kernel_addr 0x8000` он получил:
+
+```
+load=0x80008000..0x8000c7d0
+entry=0x80008000, _start=0x80008040, stack=0x8000c7d0
+reserved-start=0x85700000
+```
+
+Это доказывает непротиворечивость образа и отсутствие пересечения с первым
+известным reserved-memory диапазоном из candidate DTS, но не доказывает, что
+ABL lavender использует именно этот физический mapping или где разместит DTB.
 
 ## Проверка
 
@@ -62,3 +77,10 @@ OK: Android v1, page=4096, kernel=17232, no embedded DTB
 Следующий этап: source-level/read-only сопоставление DTB и UARTDM register map,
 затем статический harness для entry/load/stack/memory ranges. Только после
 этого проектировать lavender ADT и отдельный payload profile для XNU.
+
+Если UART clock выключен, чтение status может вернуть неготовность и shim
+пропустит все TX-записи; если interconnect/peripheral не отвечает на gated
+clock, даже MMIO read не имеет гарантии bounded completion. Если clock включён,
+но pinctrl в sleep/GPIO-состоянии, записи могут проходить во FIFO, но на
+физическом UART RX хоста байты не появятся. В обоих случаях fallback-канала
+сейчас нет: `wfe` после попыток вывода не является доказательством загрузки.
