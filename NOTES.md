@@ -1,5 +1,19 @@
 # iOS 16 on sweet (Redmi Note 10 Pro, SM7150) - working notes
 
+### >>> UPDATE 2026-10-27: fixed XNU LAVENDER machine-config rejection <<<
+
+- CI root cause: `0082-lavender-board-profile.patch` had invalid unified-diff
+  hunk counts and was silently skipped by the pinned dxb builder; MakeInc then
+  correctly rejected `CURRENT_MACHINE_CONFIG=LAVENDER`.
+- Repaired 0082 so it applies to xnu-8796.141.3, creates a valid
+  `MASTER.arm64.lavender` symlink, and adds LAVENDER to the supported list and
+  arm64 flags. Added LAVENDER to the libpthread/BearSSL/HFS staging guards.
+- Added `tools/test-xnu-machine-config.py` for hunk-count, machine-list,
+  staging-guard and symlink-patch checks; workflow runs it before build.
+- Next: commit/push and rerun `xnu.yml` with `machine_config=LAVENDER`; the
+  prior GitHub 403 remains an account permission blocker, not a code blocker.
+- Commit: `77403e7` (`xnu: make lavender machine config apply cleanly`).
+
 ### >>> UPDATE 2026-10-27: lavender CI preflight milestone <<<
 
 - Audited pinned `blacktop/darwin-xnu-build` at

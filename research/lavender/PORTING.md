@@ -129,9 +129,11 @@ vendor data и не образует распознаваемый PE header. П�
 ADT намеренно нет framebuffer, UFS, `/pram` и synthetic Apple `/product`.
 
 Добавлен XNU patch `0082-lavender-board-profile.patch`: отдельный machine
-config `LAVENDER`, отдельный `MASTER.arm64.lavender` (сейчас он совместно
-наследует базовую конфигурацию sweet), matcher `xiaomi,lavender`/`arm,armv8`,
-имя продукта Redmi Note 7 и допустимая MPIDR-топология Snapdragon 660.
+config `LAVENDER`, отдельный рабочий symlink `MASTER.arm64.lavender` (сейчас он
+совместно наследует базовую конфигурацию sweet), matcher
+`xiaomi,lavender`/`arm,armv8` и допустимая MPIDR-топология Snapdragon 660.
+Идентичность target/product берётся из ADT; методы, удалённые патчем 0059,
+не дублируются.
 Существующая реализация SWEET временно используется как compile-time каркас,
 но framebuffer bootstrap/mapping/panic-console из патчей 0010/0012 явно
 отключены для `LAVENDER`; таким образом подтверждённый адрес sweet
@@ -142,6 +144,13 @@ PSCI и timer требуют отдельного bring-up.
 Добавлен `tools/test-lavender-adt.py` — проверяет аппаратные адреса,
 топологию, RAM ranges, отсутствие sweet framebuffer/UFS nodes и наличие
 lavender guard в раннем XNU-пути.
+
+После ошибки CI `Unsupported CURRENT_MACHINE_CONFIG LAVENDER` исправлен
+повреждённый hunk 0082: теперь `MakeInc.def` действительно получает
+`LAVENDER` в `SUPPORTED_ARM64_MACHINE_CONFIGS` и `MACHINE_FLAGS`. В staging
+проверках libpthread, BearSSL и HFS добавлен тот же профиль; SWEET остаётся
+допустимым значением. Статический тест дополнительно проверяет счётчики всех
+unified-diff hunks и корректность symlink patch.
 
 `shim/build-lavender-diag.sh` собирает отдельный arm64 Linux Image и
 упаковывает его как Android header v1 без DTB: ABL должен передать live FDT в
@@ -185,6 +194,12 @@ python3 tools/test-lavender-adt.py
 lavender XNU hardware guard test: PASS
 lavender ADT profile test: PASS
 ```
+
+На чистом `xnu-8796.141.3` патч 0082 теперь применяется. В изолированной
+проверке без staging-скриптов ожидаемо не применяются только 0031 и 0041,
+поскольку они требуют предварительно созданный `bsd/sweet_hfs`; сам 0082
+применяется, список MakeInc содержит LAVENDER, а symlink master разрешается в
+`MASTER.arm64.sweet`.
 
 Генерация sweet без `--profile` также сохранена и проверяется отдельно.
 Полная сборка XNU на текущем Linux-хосте невозможна: в рабочем окружении нет

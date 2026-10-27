@@ -60,6 +60,7 @@ jobs:
       - name: Validate lavender-capable patch set
         run: |
           python3 tools/validate-repo.py
+          python3 tools/test-xnu-machine-config.py
           count=$(find dxb/patches -maxdepth 1 -type f -name '????-*.patch' | wc -l | tr -d ' ')
           test "$count" = 82
           test -f dxb/patches/0082-lavender-board-profile.patch
