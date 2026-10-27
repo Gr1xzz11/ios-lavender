@@ -32,6 +32,11 @@
   official Xiaomi ROM portal is the safe source; exact package must match
   lavender/region/boot version. `0x80008000` remains only the explicit
   `0x80000000 + kernel_addr` hypothesis.
+- The downloaded `miui_LAVENDEREEAGlobal_V12.5.1.0.QFGEUXM_39f6c7990f_10.0.zip`
+  is a signed recovery JAR/ZIP but contains `firmware-update/abl.elf`. Only
+  that 151552-byte file was extracted locally. It is stripped ELF32 ARM with
+  entry/PT_LOAD `0x9fa00000`, an EFI FV container, and no directly recoverable
+  Android kernel/DTB handoff code. Source archive and phone were untouched.
 
 ## Agent handoff / active work (2026-10-15, latest)
 

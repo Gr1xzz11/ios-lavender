@@ -64,6 +64,59 @@ patch year 2021, month 8. Это полезный ориентир совмес�
 * абсолютные base, DTB placement и сохранение `x0` закрытым lavender ABL не
   подтверждены; `0x80008000` нельзя объявлять фактом.
 
+## Анализ полученного Xiaomi ROM и `abl.elf`
+
+Локальный архив
+`/mnt/LocalDisk/Downloads/Linux/miui_LAVENDEREEAGlobal_V12.5.1.0.QFGEUXM_39f6c7990f_10.0.zip`
+имеет SHA-256
+`2e4be961b13b7056dbaa9684e4052a94eb37946abbfcca86afd7f0082478cc0a`.
+Это подписанный Android JAR/ZIP recovery ROM (`signed by SignApk`), но в нём
+есть `firmware-update/abl.elf` размером 151552 байта. Извлечён только этот
+файл в `research/lavender/firmware/abl.elf`; исходный архив не изменялся и в
+git бинарный firmware-артефакт не добавлялся.
+
+SHA-256 извлечённого ABL:
+`d3c34e19619696d110da0f34242d9a3696397c553088715cb1f47c4e45d5d74a`.
+ELF header и program headers:
+
+```
+class       ELF32, little-endian, ARM, ET_EXEC
+entry       0x9fa00000
+PT_LOAD     file 0x3000, vaddr/paddr 0x9fa00000
+            filesz/memsz 0x22000, flags RWE, align 0x1000
+```
+
+Это подтверждает адрес размещения и entry самого ABL в Qualcomm boot chain,
+но не `kernel_addr` Android boot header. `abl.elf` является 32-битным ABL;
+это совместимо с тем, что он затем передаёт управление 64-битному ARM64
+Linux/XNU shim.
+
+В load segment обнаружен EFI Firmware Volume: `_FVH` на offset `0x3028`,
+длина FV `0x22000`, header length `0x48`. Первый FFS имеет тип Firmware
+Volume Image и содержит GUID-defined vendor section с data offset `0x18`.
+ELF не имеет section headers или символов; внутри отсутствуют `ANDROID!` и
+валидный DTB magic. Единственный `MZ` в payload находится в высокоэнтропийном
+vendor data и не образует распознаваемый PE header. Поэтому из этого
+артефакта надёжно видны только ELF/FV container и ABL load/entry, но не
+внутренние функции Android boot path.
+
+Сопоставление с shim:
+
+- ABL load `0x9fa00000` не должен использоваться как адрес shim/kernel.
+- `kernel_addr=0x8000` в boot.img остаётся отдельным Android v1 полем.
+- Нельзя подтвердить по этому stripped/packed ABL, что lavender ABL делает
+  `load = 0x80000000 + 0x8000`, передаёт DTB в `x0` или сохраняет любые
+  другие регистры.
+- Архивный `boot.img` имеет те же `kernel_addr=0x8000`, page size 4096,
+  header v1 и `os_version=0x14000158`, но отличается от сохранённого boot:
+  его `kernel_size=26043409` и `ramdisk_size=0`. Он не использовался как
+  источник DTB или как образ для shim.
+
+Для полного анализа handoff потребуется не другой случайный ROM, а
+распакованный внутренний `LinuxLoader`/PE из этого ABL либо открытые symbols
+для соответствующей версии ABL. Без этого утверждать физический адрес
+ядра, расположение DTB или точный ARM64 jump нельзя.
+
 ## Изменения
 
 `shim/build-lavender-diag.sh` собирает отдельный arm64 Linux Image и
