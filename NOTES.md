@@ -15,6 +15,21 @@
   tail to the same diagnostic kernel and observe only USB fastboot disappearance
   and return. No new image was created in this milestone.
 
+### >>> UPDATE 2026-10-27: DTB-only candidate prepared <<<
+
+- Built, but did not run, `shim/out/lavender-diag-dtb-noramdisk/
+  lavender-diag-dtb-boot-noramdisk.img`: raw ARM64 Image plus the exact two
+  stock FDTs, preserving order and bytes, with `ramdisk_size=0`.
+- DTB sizes/SHA256: `481753 /
+  1ada82bafb433f6369cd50fca6763b908881f618c8216d1a0325e4120e11f41d` and
+  `514073 /
+  aa106624b6d313dcb8b75a558d81b54814a7887fe2fe86921f2d455b11154019`.
+  Boot image size 1019904, SHA256
+  `f1b65bc2205019ec99c87d3b3d4e641feb77473f092fe1e761f3d8895416bccb`.
+- Structural checker passes, including DTB equality/order, FDT bounds, v1
+  header, zero ramdisk and hypothetical early-RAM placement. Whether ABL
+  accepts raw Image+FDT or requires gzip remains unknown.
+
 ### >>> UPDATE 2026-10-27: lavender first-boot preflight <<<
 
 - `fastboot` 37.0.1 is installed, but `fastboot devices` and read-only
