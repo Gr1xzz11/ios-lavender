@@ -41,7 +41,12 @@ QEMU_VTIMER_INTID = 27
 
 # lavender (Redmi Note 7, SDM660) values from research/lavender/dts/candidate-2.dts
 LAVENDER_LOW_BASE = 0x80000000
-LAVENDER_LOW_SIZE = 0x80000000
+LAVENDER_PHYS_LOW_SIZE = 0x80000000
+# xnu-8796 arm64's bootstrap accepts one contiguous physBase/memSize range
+# and does not consume /reserved-memory or /chosen/memory-map as allocator
+# exclusions. Stop before wlan_msa_guard; the physical low bank remains
+# documented by the memory node and the descriptive high-bank properties.
+LAVENDER_LOW_SIZE = 0x05600000  # [0x80000000, 0x85600000)
 LAVENDER_HIGH_BASE = 0x100000000
 LAVENDER_HIGH_SIZE = 0x7e4c0000  # [0x100000000, 0x17e4bffff]
 LAVENDER_GICD, LAVENDER_GICR = 0x17a00000, 0x17b00000
@@ -88,8 +93,9 @@ def build_lavender(seed=None):
 
     It intentionally has no framebuffer, UFS, panic-log reservation, Apple
     product identity, or XNU placement address. The upper RAM bank is exposed
-    as descriptive DT properties and as a two-range memory node; existing XNU
-    memory bootstrap still needs an explicit multi-range audit.
+    as descriptive DT properties and as a two-range memory node.  The chosen
+    dram-size is deliberately a smaller XNU-managed window because xnu-8796's
+    arm64 allocator accepts one contiguous boot_args interval.
     """
     seed = seed if seed is not None else os.urandom(64)
     phandle = iter(range(1, 1000))
@@ -98,6 +104,7 @@ def build_lavender(seed=None):
     chosen = node('chosen', [
         ph(),
         ('dram-base', u64(LAVENDER_LOW_BASE)),
+        # This is the conservative XNU-managed window, not DIMM capacity.
         ('dram-size', u64(LAVENDER_LOW_SIZE)),
         ('dram-high-base', u64(LAVENDER_HIGH_BASE)),
         ('dram-high-size', u64(LAVENDER_HIGH_SIZE)),
@@ -165,7 +172,7 @@ def build_lavender(seed=None):
     memory = node('memory', [
         ph(),
         ('device_type', cstr('memory')),
-        ('reg', u64(LAVENDER_LOW_BASE, LAVENDER_LOW_SIZE,
+        ('reg', u64(LAVENDER_LOW_BASE, LAVENDER_PHYS_LOW_SIZE,
                     LAVENDER_HIGH_BASE, LAVENDER_HIGH_SIZE)),
     ])
     return node('device-tree', [

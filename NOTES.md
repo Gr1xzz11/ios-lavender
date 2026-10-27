@@ -20,6 +20,25 @@
   with a checked reserved-memory-aware bootstrap path; do not paper over it by
   moving only the kernel or inventing an ABL address.
 
+### >>> UPDATE 2026-10-27: lavender conservative XNU RAM window <<<
+
+- Source audit of xnu-8796.141.3 confirms arm64 does not use the DT
+  `/reserved-memory` or `/chosen/memory-map` nodes for physical allocation.
+  `arm_vm_init()` derives one interval from `boot_args.physBase/memSize`, and
+  `pmap` allocates from `topOfKernelData` through `avail_end`.
+- `mkadt.py --profile lavender` now exposes the checked XNU window
+  `[0x80000000,0x85600000)` (`dram-size=0x05600000`), before every fixed
+  lavender carve-out. The full low/high physical map remains descriptive in
+  `/memory.reg` and `dram-high-*`.
+- Added `tools/test-lavender-memory.py` and made
+  `tools/preflight-lavender-xnu.py` require an XNU source tree, verify the
+  allocator data flow, all fixed reservations, and kernel/ADT/boot_args fit.
+- Local result: artifact SHA/Mach-O checks, XNU source-model check, ADT,
+  memory-window, machine-config, syntax and diff checks pass. Dynamic
+  shared-dma-pool allocation remains an explicit ABL-before-Linux assumption.
+- No boot image or CI run: this change is ADT/preflight-only and does not alter
+  the compiled XNU kernel.
+
 ### >>> UPDATE 2026-10-27: lavender CI link failure analyzed <<<
 
 - Archive `logs_109729891426.zip` is the run for commit `e57e910`; preflight,

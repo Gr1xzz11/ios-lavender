@@ -26,10 +26,29 @@
 Mach-O или entry point.
 
 Следующий кодовый шаг — отдельный подтверждённый memory-map path для XNU:
-исключить fixed и dynamic reserved-memory из allocator либо передавать
-консервативное проверенное окно RAM с согласованными `physBase`, `virtBase`,
-`topOfKernelData` и 16K bootstrap page tables. До этого boot image с XNU не
-генерируется.
+полноценно исключить fixed и dynamic reserved-memory из allocator либо
+использовать консервативное проверенное окно RAM. Для первого варианта уже
+проверено, что `xnu-8796.141.3` не поддерживает это через DT: arm64
+`arm_vm_init()` читает только `boot_args.physBase/memSize`, рассчитывает
+`gPhysBase/gPhysSize`, а `pmap` выдаёт страницы из одного интервала
+`first_avail..avail_end`; `/reserved-memory` и `/chosen/memory-map` allocator
+не читает. `memoryMap` в arm64 `boot_args` отсутствует (он есть в i386 ABI).
+
+Реализован безопасный ограниченный профиль: `dram-base=0x80000000`,
+`dram-size=0x05600000`, то есть `[0x80000000,0x85600000)`. Все фиксированные
+reserved-memory области начинаются не раньше `0x85600000`, а kernel/ADT/boot
+args помещаются в это окно. Полная физическая двухбанковая карта остаётся в
+`/memory.reg` и `dram-high-*` только как справочная; она не передаётся XNU как
+управляемая память. Dynamic `shared-dma-pool` узлы имеют широкие
+`alloc-ranges`, но не фиксированный `reg`; этот профиль предполагает запуск
+непосредственно после ABL, до Linux allocator. Это остаётся отдельным риском,
+который нельзя снять только статическим DTS-анализом.
+
+`tools/preflight-lavender-xnu.py` теперь требует путь к исходникам XNU и
+проверяет фактическую цепочку `dram-*` → `boot_args` → `arm_vm_init` → `pmap`,
+фиксированные reservations и запас под ADT/boot_args. Старый BLOCKED снят
+только для этого проверенного ограниченного окна; boot image по-прежнему не
+создаётся до отдельной проверки ABL ramdisk placement.
 
 ## Подтверждено локальными артефактами
 

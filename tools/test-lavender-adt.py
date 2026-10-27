@@ -23,7 +23,7 @@ assert b"xiaomi,sweet\0" not in rp["compatible"]
 
 chosen = props(child(root, "chosen"))
 assert struct.unpack("<Q", chosen["dram-base"])[0] == 0x80000000
-assert struct.unpack("<Q", chosen["dram-size"])[0] == 0x80000000
+assert struct.unpack("<Q", chosen["dram-size"])[0] == 0x05600000
 assert struct.unpack("<Q", chosen["dram-high-base"])[0] == 0x100000000
 assert struct.unpack("<Q", chosen["dram-high-size"])[0] == 0x7E4C0000
 assert "embedded-panic-log-size" not in chosen

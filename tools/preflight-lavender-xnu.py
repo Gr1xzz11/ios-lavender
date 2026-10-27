@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Fail-closed preflight for a lavender XNU Mach-O and payload placement.
 
-This check deliberately does not manufacture an ABL load address.  It models
-the placement currently implemented by mkpayload.py and rejects it if the
-result intersects a fixed reserved-memory range from the lavender DTS.
+This check deliberately does not manufacture an ABL load address. It verifies
+the arm64 allocator contract from an xnu-8796 source tree, then models the
+placement currently implemented by mkpayload.py and rejects intersections with
+fixed reserved-memory ranges from the lavender DTS.
 """
 import argparse
 import hashlib
@@ -89,18 +90,41 @@ def overlap(start, end):
             if start < hi and lo < end]
 
 
+def verify_xnu_memory_model(tree):
+    """Verify the source path that turns boot_args into pmap's one interval."""
+    root = Path(tree)
+    vm = (root / "osfmk/arm64/arm_vm_init.c").read_text(encoding="utf-8")
+    init = (root / "osfmk/arm/arm_init.c").read_text(encoding="utf-8")
+    pmap = (root / "osfmk/arm/pmap/pmap.c").read_text(encoding="utf-8")
+    required = (
+        "gPhysBase = args->physBase",
+        "gPhysSize = mem_size = ((gPhysBase + args->memSize)",
+        "avail_start = args->topOfKernelData",
+        "avail_end = gPhysBase + mem_size",
+    )
+    for marker in required:
+        assert marker in vm, f"XNU memory model changed; missing {marker!r}"
+    assert 'SecureDTGetProperty(chosen, "dram-base"' in init
+    assert 'SecureDTGetProperty(chosen, "dram-size"' in init
+    assert "avail_end - first_avail" in pmap
+
+
 ap = argparse.ArgumentParser()
 ap.add_argument("kernel")
 ap.add_argument("adt")
+ap.add_argument("--xnu-tree", required=True,
+                help="xnu-8796 source tree used to verify allocator behavior")
 ap.add_argument("--sha256", help="expected SHA-256 of the kernel")
 a = ap.parse_args()
 
+verify_xnu_memory_model(a.xnu_tree)
 blob, m = macho(a.kernel)
 digest = hashlib.sha256(blob).hexdigest()
 if a.sha256:
     assert digest == a.sha256.lower(), f"SHA-256 mismatch: {digest}"
 low, low_size, high, high_size = chosen_memory(a.adt)
-assert (low, low_size, high, high_size) == (0x80000000, 0x80000000, 0x100000000, 0x7E4C0000), \
+adt_blob = Path(a.adt).read_bytes()
+assert (low, low_size, high, high_size) == (0x80000000, 0x05600000, 0x100000000, 0x7E4C0000), \
     "unexpected lavender ADT memory map"
 
 # This is exactly mkpayload.py's current mapping: phys = phys_base +
@@ -110,6 +134,9 @@ load_start = low + next(s[1] for s in m["segs"] if s[0] == "__TEXT") - m["virt_b
 load_end = low + m["kernel_end"] - m["virt_base"]
 kernel_hits = overlap(load_start, load_end)
 managed_hits = overlap(low, low + low_size)
+metadata_end = (load_end + len(adt_blob) + PAGE - 1) & ~(PAGE - 1)
+metadata_end += PAGE
+assert metadata_end <= low + low_size, "kernel/ADT/boot_args exceed managed lavender window"
 print(f"kernel sha256: {digest}")
 print(f"Mach-O: ARM64 entry={m['entry']:#x} virt_base={m['virt_base']:#x} "
       f"kernel_end={m['kernel_end']:#x}")
