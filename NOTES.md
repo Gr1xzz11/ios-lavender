@@ -1,5 +1,21 @@
 # iOS 16 on sweet (Redmi Note 10 Pro, SM7150) - working notes
 
+### >>> UPDATE 2026-10-27: lavender CI preflight milestone <<<
+
+- Audited pinned `blacktop/darwin-xnu-build` at
+  `663906528d1c...`; it passes `MACHINE_CONFIG` into XNU `TARGET_CONFIGS` and
+  applies `patches/*.patch`, but silently skips failed `git apply` checks.
+- Updated `.github/workflows/xnu.yml`: `SWEET/LAVENDER` choice, local 82-patch
+  inventory, fail-closed reverse-apply verification, and `MASTER.arm64.<profile>`
+  existence check. Removed buildtree/private Kernel.framework headers and KDK
+  symbol metadata from artifacts; only final `kernel.*` and SHA256SUMS remain.
+- Commit: `dfaf990` (`ci: validate lavender XNU patch application safely`).
+- GitHub push and workflow dispatch were attempted for `lavender-port` but
+  rejected with HTTP 403 (`Permission denied`; Actions dispatch requires admin).
+  No CI run exists yet. A repository owner must push this commit and dispatch
+  `xnu.yml` with `macos_version=13.5`, `kernel_config=DEVELOPMENT`,
+  `machine_config=LAVENDER`, `keep_going=false`.
+
 ### >>> UPDATE 2026-10-27: lavender ADT/XNU profile milestone <<<
 
 - Added `mkadt.py --profile lavender` with only locally confirmed lavender
