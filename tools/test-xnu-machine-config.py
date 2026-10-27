@@ -46,6 +46,10 @@ for path in (
 timer_patch = Path("xnu/patches/0017-sweet-device-tree-virtual-timer-irq.patch").read_text(encoding="utf-8")
 assert "defined(SWEET) || defined(LAVENDER)" in timer_patch
 assert "#if defined(ARM64_BOARD_CONFIG_SWEET) || defined(ARM64_BOARD_CONFIG_LAVENDER)" in timer_patch
+crash_patch = Path("xnu/patches/0043-sweet-console-crash-log.patch").read_text(encoding="utf-8")
+assert crash_patch.count("defined(ARM64_BOARD_CONFIG_SWEET) || defined(ARM64_BOARD_CONFIG_LAVENDER)") == 2
+mute_patch = Path("xnu/patches/0067-sweet-console-mute.patch").read_text(encoding="utf-8")
+assert mute_patch.count("defined(ARM64_BOARD_CONFIG_SWEET) || defined(ARM64_BOARD_CONFIG_LAVENDER)") == 2
 for path in (
     "xnu/patches/0019-stage-libpthread.sh",
     "xnu/patches/0020-stage-bearssl.sh",

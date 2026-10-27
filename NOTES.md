@@ -13,6 +13,18 @@
 - Local static validation passed. Next: commit, push and rerun `xnu.yml` with
   the standard lavender inputs; analyze the next compiler/linker result.
 
+### >>> UPDATE 2026-10-27: lavender linker guard blocker <<<
+
+- Run `40482853306` passed preflight, staging and compilation, then failed at
+  the lavender kernel link with undefined `sweet_console_muted` and
+  `sweet_sample_task`.
+- Root cause: patches 0043 and 0067 placed shared SWEET crash/sampler and
+  console-mute definitions behind SWEET-only board guards, while lavender
+  intentionally reuses those sources through `MASTER.arm64.lavender`.
+- Extended only those guards to `ARM64_BOARD_CONFIG_SWEET ||
+  ARM64_BOARD_CONFIG_LAVENDER`; added static assertions for both patch sets.
+- Local validation passes. Next: commit, push and rerun the same workflow.
+
 ### >>> UPDATE 2026-10-27: fixed XNU LAVENDER machine-config rejection <<<
 
 - CI root cause: `0082-lavender-board-profile.patch` had invalid unified-diff
