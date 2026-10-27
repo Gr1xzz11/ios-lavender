@@ -316,6 +316,60 @@ patch year 2021, month 8. Это полезный ориентир совмес�
 
 ## Анализ полученного Xiaomi ROM и `abl.elf`
 
+## Контрольный stock `boot.img` и установленная HyperOS
+
+Эксперименты с модифицированными boot images остановлены. Локальный
+`backup/lavender-boot.img` прошёл read-only structural preflight:
+
+```
+size             67108864 (64 MiB)
+sha256           58aae5d8dbae3358cb4d83997ea0d5c1536a06214f933fea22a81758b2ed44d6
+header           Android v1, page_size=4096, header_size=1648
+kernel           10800416 bytes, kernel_addr=0x8000
+ramdisk          676352 bytes, ramdisk_addr=0x01000000
+second           0 bytes, second_addr=0x00f00000
+tags             0x100
+os_version       0x14000158
+```
+
+Проверены границы kernel/ramdisk внутри 64 MiB, gzip member с appended tail,
+два FDT подряд (`481753` и `514073` байта, SHA-256
+`1ada82bafb433f6369cd50fca6763b908881f618c8216d1a0325e4120e11f41d` и
+`aa106624b6d313dcb8b75a558d81b54814a7887fe2fe86921f2d455b11154019d`), а
+также побайтное совпадение kernel/ramdisk со срезами
+`research/lavender/boot/kernel` и `research/lavender/boot/ramdisk`. Это
+доказывает целостность локального файла и его соответствие lavender-дампу,
+но не доказывает соответствие текущей установленной HyperOS.
+
+Скачанный recovery ROM
+`/mnt/LocalDisk/Downloads/Linux/miui_LAVENDEREEAGlobal_V12.5.1.0.QFGEUXM_39f6c7990f_10.0.zip`
+имеет SHA-256 `2e4be961b13b7056dbaa9684e4052a94eb37946abbfcca86afd7f0082478cc0a`.
+Его внутренний `boot.img` не равен backup: SHA-256
+`e027606f653592779204a44b46ac9db931c1a1f1307601d05f69f0bbcb14acf1`, тот же
+v1/page 4096 header, но `kernel_size=26043409` и `ramdisk_size=0`. Это
+recovery ROM `V12.5.1.0.QFGEUXM` из локального архива, а не подтверждённый
+образ текущей HyperOS; подменять им current boot нельзя.
+
+Сравнение с `shim/out/lavender-diag-stocklike/lavender-diag-stocklike-boot.img`:
+модифицированный файл имеет размер `1683456`, SHA-256
+`4e1911686c721abc18210e39a9a4ce0bb531c58fbd70317e9aad41e665a6cead` и
+`kernel_size=996479`; его ramdisk, appended DTBs, header-поля и cmdline
+скопированы из backup, но kernel заменён. Поэтому это диагностический образ,
+а не контрольная копия stock.
+
+Итог: `backup/lavender-boot.img` можно использовать для локального сравнения,
+парсинга и проверки упаковки. Использовать его как контрольный временный
+`fastboot boot` до получения `boot.img` от фактически установленной HyperOS
+нельзя считать корректным экспериментом: отсутствует локальное доказательство
+совпадения build fingerprint/версии, а несовместимость kernel/ramdisk с
+установленной системой или ABL может вызвать ранний отказ. OrangeFox лишь
+сохраняет путь восстановления и не подтверждает совместимость версий.
+
+Следующий необходимый артефакт — `boot.img`, извлечённый из полного OTA/
+fastboot-пакета именно текущей сборки, либо read-only build fingerprint и
+версия, по которым можно доказать совпадение с локальным backup. До этого
+новые boot-запуски не планируются.
+
 Локальный архив
 `/mnt/LocalDisk/Downloads/Linux/miui_LAVENDEREEAGlobal_V12.5.1.0.QFGEUXM_39f6c7990f_10.0.zip`
 имеет SHA-256

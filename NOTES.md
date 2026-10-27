@@ -1,5 +1,33 @@
 # iOS 16 on sweet (Redmi Note 10 Pro, SM7150) - working notes
 
+### >>> UPDATE 2026-10-27: stock lavender boot control-artifact audit <<<
+
+- Experiments with modified lavender boot images are stopped. No new boot
+  image was created or run in this milestone.
+- `backup/lavender-boot.img` is a structurally valid Android boot header v1,
+  4096-byte page image of exactly 64 MiB. SHA-256:
+  `58aae5d8dbae3358cb4d83997ea0d5c1536a06214f933fea22a81758b2ed44d6`.
+  It contains a 10,800,416-byte gzip member plus the two valid appended FDTs
+  and a 676,352-byte ramdisk. The extracted `research/lavender/boot/kernel`
+  and `ramdisk` match the corresponding image slices byte-for-byte.
+- The recovery ROM
+  `miui_LAVENDEREEAGlobal_V12.5.1.0.QFGEUXM_39f6c7990f_10.0.zip` contains a
+  different v1 `boot.img` (SHA-256
+  `e027606f653592779204a44b46ac9db931c1a1f1307601d05f69f0bbcb14acf1`), with
+  `ramdisk_size=0` and a 26,043,409-byte kernel. It is not interchangeable
+  with the backup and is not evidence of the installed HyperOS build.
+- The modified stock-like diagnostic image is only 1,683,456 bytes and uses a
+  996,479-byte replacement kernel; it retains the stock ramdisk/DTBs/cmdline
+  but is not a stock control image. Its SHA-256 is
+  `4e1911686c721abc18210e39a9a4ce0bb531c58fbd70317e9aad41e665a6cead`.
+- Verdict: the backup is usable as a local parser/reference control, but a
+  temporary boot of it is **NO-GO as a version-control test** until the
+  `boot.img` from the currently installed HyperOS build is obtained or the
+  installed build fingerprint/version is independently matched. A temporary
+  original-image boot would normally avoid partition writes, but a kernel /
+  ramdisk / ABL-version mismatch can still fail early or require recovery;
+  OrangeFox does not prove compatibility with the installed system.
+
 ### >>> UPDATE 2026-10-27: post-boot fastboot result and stock DTB finding <<<
 
 - After the one permitted `fastboot boot`, the phone remained responsive in
