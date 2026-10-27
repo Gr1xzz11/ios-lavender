@@ -1,5 +1,20 @@
 # iOS 16 on sweet (Redmi Note 10 Pro, SM7150) - working notes
 
+### >>> UPDATE 2026-10-27: post-boot fastboot result and stock DTB finding <<<
+
+- After the one permitted `fastboot boot`, the phone remained responsive in
+  fastboot. No second launch was performed.
+- Stock `backup/lavender-boot.img` is v1 with the same page/kernel/tags fields,
+  but its gzip kernel blob has an appended DTB tail inside `kernel_size`: two
+  valid FDTs at relative tail offsets `0` and `0x759d9`, sizes `0x759d9` and
+  `0x7d819`. The diagnostic image has no FDT magic and no ramdisk.
+- `Booting OKAY` is only the fastboot protocol acknowledgement; it does not
+  prove the ARM64 Image entry was reached. The remaining fastboot connection
+  is compatible with ABL rejecting zero ramdisk or failing DTB discovery.
+- One proposed next experiment (not executed): append a validated stock DTB
+  tail to the same diagnostic kernel and observe only USB fastboot disappearance
+  and return. No new image was created in this milestone.
+
 ### >>> UPDATE 2026-10-27: lavender first-boot preflight <<<
 
 - `fastboot` 37.0.1 is installed, but `fastboot devices` and read-only
