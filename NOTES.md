@@ -1,5 +1,23 @@
 # iOS 16 on sweet (Redmi Note 10 Pro, SM7150) - working notes
 
+### >>> UPDATE 2026-10-27: lavender ADT/XNU profile milestone <<<
+
+- Added `mkadt.py --profile lavender` with only locally confirmed lavender
+  GIC, UARTDM, CPU, RAM and eMMC values; sweet default/QEMU paths remain intact.
+- Added `tools/test-lavender-adt.py`. It checks the two-bank RAM map, 8 MPIDRs,
+  relative arm-io ranges and absence of framebuffer/UFS nodes. It also verifies
+  that the sweet early framebuffer code is compile-time disabled for lavender.
+- Added XNU patch `0082-lavender-board-profile.patch` and separate
+  `MASTER.arm64.lavender`; no framebuffer/XNU placement was invented. The
+  shared SWEET implementation is only a temporary compile-time scaffold.
+- Local Linux cannot build XNU: no Xcode/macOS SDK/KDK/iig. CI workflow accepts
+  `machine_config=LAVENDER`; no CI run was started in this milestone.
+- No phone commands, fastboot/adb, partition writes or network upload of dumps
+  were performed. Remaining blockers: apply/compile the full patch series on
+  macOS CI, then audit UART clocks/pinctrl, PSCI/timer and multi-range XNU RAM
+  bootstrap before any device execution.
+- Commit: `f3555e1` (`lavender: add ADT and XNU board profile`).
+
 ### >>> UPDATE 2026-10-27: lavender audit milestone <<<
 
 - Created branch `lavender-port`; no phone commands or writes were performed.

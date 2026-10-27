@@ -119,6 +119,30 @@ vendor data и не образует распознаваемый PE header. П�
 
 ## Изменения
 
+### Первый XNU/ADT профиль lavender
+
+Добавлен `mkadt.py --profile lavender`. Он не меняет профиль sweet и содержит
+только подтверждённые по `candidate-2.dts` узлы: 8 CPU с MPIDR
+`0..3,0x100..0x103`, GICD/GICR, UARTDM и eMMC SDHCI/CMDQ. RAM описана двумя
+диапазонами `0x80000000..0xffffffff` и `0x100000000..0x17e4bffff`; это описание
+карты памяти, а не разрешение размещать XNU в произвольном адресе. В lavender
+ADT намеренно нет framebuffer, UFS, `/pram` и synthetic Apple `/product`.
+
+Добавлен XNU patch `0082-lavender-board-profile.patch`: отдельный machine
+config `LAVENDER`, отдельный `MASTER.arm64.lavender` (сейчас он совместно
+наследует базовую конфигурацию sweet), matcher `xiaomi,lavender`/`arm,armv8`,
+имя продукта Redmi Note 7 и допустимая MPIDR-топология Snapdragon 660.
+Существующая реализация SWEET временно используется как compile-time каркас,
+но framebuffer bootstrap/mapping/panic-console из патчей 0010/0012 явно
+отключены для `LAVENDER`; таким образом подтверждённый адрес sweet
+`0x9c000000` не исполняется на lavender. Это не означает, что остальные
+sweet-драйверы уже являются lavender-драйверами: eMMC, UART clocks/pinctrl,
+PSCI и timer требуют отдельного bring-up.
+
+Добавлен `tools/test-lavender-adt.py` — проверяет аппаратные адреса,
+топологию, RAM ranges, отсутствие sweet framebuffer/UFS nodes и наличие
+lavender guard в раннем XNU-пути.
+
 `shim/build-lavender-diag.sh` собирает отдельный arm64 Linux Image и
 упаковывает его как Android header v1 без DTB: ABL должен передать live FDT в
 `x0`. `diag_start.S` устанавливает только стек, маскирует исключения, чистит
@@ -153,6 +177,22 @@ header kernel_addr=0x8000; physical base/DTB placement unresolved by header
 placement этим не подтверждаются.
 
 ## Проверка
+
+Профиль ADT и guard-проверка прошли локально:
+
+```
+python3 tools/test-lavender-adt.py
+lavender XNU hardware guard test: PASS
+lavender ADT profile test: PASS
+```
+
+Генерация sweet без `--profile` также сохранена и проверяется отдельно.
+Полная сборка XNU на текущем Linux-хосте невозможна: в рабочем окружении нет
+Xcode/macOS SDK, Kernel Development Kit и `iig`; workflow
+`.github/workflows/xnu.yml` рассчитан на macOS GitHub runner. Поэтому патч
+0082 прошёл только статические проверки и ещё не имеет результата clang/XNU
+компиляции. Для CI надо запускать workflow с `machine_config=LAVENDER`, не
+меняя default `SWEET`.
 
 2026-10-27 локальная сборка через `clang --target=aarch64-none-elf`, lld и
 `llvm-objcopy` (системного `aarch64-linux-gnu-gcc` нет):

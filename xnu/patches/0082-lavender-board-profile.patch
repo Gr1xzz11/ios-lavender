@@ -1,0 +1,132 @@
+diff --git a/makedefs/MakeInc.def b/makedefs/MakeInc.def
+--- a/makedefs/MakeInc.def
++++ b/makedefs/MakeInc.def
+@@ -29,7 +29,7 @@ SUPPORTED_ARM64_MACHINE_CONFIGS = NONE
+ else ifneq ($(findstring _host,$(RC_ProjectName)),)
+ SUPPORTED_ARM64_MACHINE_CONFIGS = NONE
+ else
+-SUPPORTED_ARM64_MACHINE_CONFIGS = BCM2837 T6000 T8101 T8103 VMAPPLE SWEET
++SUPPORTED_ARM64_MACHINE_CONFIGS = BCM2837 T6000 T8101 T8103 VMAPPLE SWEET LAVENDER
+ 
+ endif
+@@ -61,6 +61,7 @@ MACHINE_FLAGS_ARM64_T8103 = -DARM64_BOARD_CONFIG_T8103                  -mcpu=ap
+ MACHINE_FLAGS_ARM64_T6000 = -DARM64_BOARD_CONFIG_T6000 		-mcpu=apple-a14
+ MACHINE_FLAGS_ARM64_VMAPPLE = -DARM64_BOARD_CONFIG_VMAPPLE              -march=armv8.5a
+ MACHINE_FLAGS_ARM64_BCM2837 = -DARM64_BOARD_CONFIG_BCM2837
+ MACHINE_FLAGS_ARM64_SWEET = -DARM64_BOARD_CONFIG_SWEET                -march=armv8.2-a+crypto
++MACHINE_FLAGS_ARM64_LAVENDER = -DARM64_BOARD_CONFIG_LAVENDER            -march=armv8.2-a+crypto
+ 
+ 
+ #
+@@ -261,7 +262,7 @@ export ARCH_STRING_FOR_CURRENT_MACHINE_CONFIG := $(shell echo $(CURRENT_ARCH_CONFIG) | tr A-Z a-z)
+ ifneq ($(filter arm64,$(ARCH_STRING_FOR_CURRENT_MACHINE_CONFIG)),)
+ # sweet's Cortex-A76/A55 have no pointer authentication: stay plain arm64
+ ifneq ($(CURRENT_MACHINE_CONFIG),SWEET)
++ifneq ($(CURRENT_MACHINE_CONFIG),LAVENDER)
+ export ARCH_STRING_FOR_CURRENT_MACHINE_CONFIG := arm64e
+ endif
+ endif
++endif
+ 
+ endif
+diff --git a/pexpert/pexpert/arm64/board_config.h b/pexpert/pexpert/arm64/board_config.h
+--- a/pexpert/pexpert/arm64/board_config.h
++++ b/pexpert/pexpert/arm64/board_config.h
+@@ -108,6 +108,16 @@
+ 
+ #endif  /* ARM64_BOARD_CONFIG_SWEET */
+ 
++#ifdef ARM64_BOARD_CONFIG_LAVENDER
++#include <pexpert/arm64/SWEET.h>
++#define LAVENDER                    1
++#define MAX_L2_CLINE                6
++#define MAX_CPUS                    8
++#define MAX_CPU_CLUSTERS            2
++#define CORE_NCTRS                  8
++#endif  /* ARM64_BOARD_CONFIG_LAVENDER */
++
+ #ifdef ARM64_BOARD_CONFIG_VMAPPLE
+ #include <pexpert/arm64/VMAPPLE.h>
+diff --git a/iokit/KernelConfigTables.cpp b/iokit/KernelConfigTables.cpp
+--- a/iokit/KernelConfigTables.cpp
++++ b/iokit/KernelConfigTables.cpp
+@@ -41,6 +41,24 @@ const char * gIOKernelConfigTables =
+     "     'IONameMatch'     = 'xiaomi,sweet';"
+     "     'IOProbeScore'    = 10000:32;"
+     "   },"
++#if defined(ARM64_BOARD_CONFIG_LAVENDER)
++    "   {"
++    "     'IOClass'         = SweetPlatformExpert;"
++    "     'IOProviderClass' = IOPlatformExpertDevice;"
++    "     'IONameMatch'     = 'xiaomi,lavender';"
++    "     'IOProbeScore'    = 10000:32;"
++    "   },"
++    "   {"
++    "     'IOClass'         = SweetCPU;"
++    "     'IOProviderClass' = IOPlatformDevice;"
++    "     'IONameMatch'     = 'arm,armv8';"
++    "     'IOProbeScore'    = 10000:32;"
++    "   },"
++#endif
+     "   {"
+     "     'IOClass'         = IOPanicPlatform;"
+diff --git a/iokit/Kernel/arm/SweetPlatformExpert.cpp b/iokit/Kernel/arm/SweetPlatformExpert.cpp
+--- a/iokit/Kernel/arm/SweetPlatformExpert.cpp
++++ b/iokit/Kernel/arm/SweetPlatformExpert.cpp
+@@ -74,14 +74,22 @@ SweetPlatformExpert::getTargetName(char *name, int maxLength)
+ 	if (name == NULL || maxLength <= 0) {
+ 		return false;
+ 	}
++#if defined(LAVENDER)
++	strlcpy(name, "lavender", (size_t)maxLength);
++#else
+ 	strlcpy(name, "sweet", (size_t)maxLength);
++#endif
+ 	return true;
+ }
+@@ -94,7 +102,11 @@ SweetPlatformExpert::getProductName(char *name, int maxLength)
+ 	if (name == NULL || maxLength <= 0) {
+ 		return false;
+ 	}
++#if defined(LAVENDER)
++	strlcpy(name, "Redmi Note 7", (size_t)maxLength);
++#else
+ 	strlcpy(name, "Redmi Note 10 Pro", (size_t)maxLength);
++#endif
+ 	return true;
+ }
+ #endif /* SWEET */
+diff --git a/iokit/Kernel/arm/SweetCPU.cpp b/iokit/Kernel/arm/SweetCPU.cpp
+--- a/iokit/Kernel/arm/SweetCPU.cpp
++++ b/iokit/Kernel/arm/SweetCPU.cpp
+@@ -65,8 +65,13 @@ SweetCPU::start(IOService *provider)
+ 	if (*(const uint32_t *)reg->getBytesNoCopy() != cpu->phys_id) {
+ 		return false;
+ 	}
++#if defined(LAVENDER)
++	if (cpu->phys_id > 0x103 || (cpu->phys_id & 0xff) > 3 ||
++	    topology->num_cpus > SWEET_SMP_MAX_CPUS) {
++#else
+ 	if (cpu->phys_id > 0x500 || (cpu->phys_id & 0xff) != 0 ||
+ 	    topology->num_cpus > SWEET_SMP_MAX_CPUS) {
++#endif
+ 		panic("SWEET CPU: invalid A55 topology cpu=%u mpidr=0x%x count=%u",
+ 		    cpu->cpu_id, cpu->phys_id, topology->num_cpus);
+ 	}
+@@ -84,7 +89,11 @@ SweetCPU::start(IOService *provider)
+ 	if (pmi_handler != NULL) {
+ 		panic("SWEET CPU: PMI routing is not implemented");
+ 	}
+ 
++#if defined(LAVENDER)
++	cpuName = OSSymbol::withCStringNoCopy("Kryo 260");
++#else
+ 	cpuName = OSSymbol::withCStringNoCopy("Kryo 470");
++#endif
+ 	registerService();
+diff --git a/config/MASTER.arm64.lavender b/config/MASTER.arm64.lavender
+new file mode 120000
+--- /dev/null
++++ b/config/MASTER.arm64.lavender
+@@ -0,0 +1 @@
++MASTER.arm64.sweet

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Build the minimal Apple Device Tree that the SWEET xnu needs to boot.
+"""Build minimal Apple Device Trees for the sweet and lavender ports.
 
-Only what the early boot path actually reads (see NOTES.md); every MMIO
-address comes from the sweet live FDT. Usage:  mkadt.py OUT.adt [--dump] [--qemu] [--highmem]
+Only what the early boot path actually reads is emitted. Usage:
+  mkadt.py OUT.adt [--profile sweet|lavender] [--dump] [--qemu] [--highmem]
 """
-import hashlib, os, struct, sys
+import argparse, hashlib, os, struct, sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import adt  # noqa: E402
@@ -38,6 +38,15 @@ VTIMER_INTID = 19
 # QEMU virt (-M virt,gic-version=3 -cpu cortex-a76): GICD/GICR and the generic timer's CNTFRQ
 QEMU_GICD, QEMU_GICR, QEMU_TIMEBASE = 0x08000000, 0x080a0000, 62500000
 QEMU_VTIMER_INTID = 27
+
+# lavender (Redmi Note 7, SDM660) values from research/lavender/dts/candidate-2.dts
+LAVENDER_LOW_BASE = 0x80000000
+LAVENDER_LOW_SIZE = 0x80000000
+LAVENDER_HIGH_BASE = 0x100000000
+LAVENDER_HIGH_SIZE = 0x7e4c0000  # [0x100000000, 0x17e4bffff]
+LAVENDER_GICD, LAVENDER_GICR = 0x17a00000, 0x17b00000
+LAVENDER_UART = 0x0c170000
+LAVENDER_EMMC, LAVENDER_EMMC_CMDQ = 0x0c0c4000, 0x0c0c5000
 
 BOOT_MANIFEST_HASH = hashlib.sha384(b'sweet boot manifest').digest()
 
@@ -74,8 +83,110 @@ def node(name, props=(), children=()):
     return n
 
 
-def build(seed=None, qemu=False, highmem=False):
+def build_lavender(seed=None):
+    """Build the hardware-only lavender profile.
+
+    It intentionally has no framebuffer, UFS, panic-log reservation, Apple
+    product identity, or XNU placement address. The upper RAM bank is exposed
+    as descriptive DT properties and as a two-range memory node; existing XNU
+    memory bootstrap still needs an explicit multi-range audit.
+    """
+    seed = seed if seed is not None else os.urandom(64)
+    phandle = iter(range(1, 1000))
+    ph = lambda: ('AAPL,phandle', u32(next(phandle)))
+
+    chosen = node('chosen', [
+        ph(),
+        ('dram-base', u64(LAVENDER_LOW_BASE)),
+        ('dram-size', u64(LAVENDER_LOW_SIZE)),
+        ('dram-high-base', u64(LAVENDER_HIGH_BASE)),
+        ('dram-high-size', u64(LAVENDER_HIGH_SIZE)),
+        ('random-seed', seed),
+        ('debug-enabled', u32(1)),
+        ('firmware-version', cstr('lavender-adt')),
+        ('system-firmware-version', cstr('lavender-adt')),
+    ], [node('memory-map', [ph()])])
+
+    cpu_nodes = []
+    for core in range(8):
+        mpidr = core if core < 4 else 0x100 + core - 4
+        cluster = 0 if core < 4 else 1
+        frequency = 0x6ddd0000 if cluster == 0 else 0x839b6800
+        cpu_nodes.append(node(f'cpu{core}', [
+            ph(),
+            ('device_type', cstr('cpu')),
+            ('compatible', cstr('arm,armv8') + cstr('arm,kryo')),
+            ('reg', u32(mpidr)),
+            ('cpu-id', u32(core)),
+            ('cluster-id', u32(cluster)),
+            ('cluster-type', u32(0)),
+            ('die-cluster-id', u32(0)),
+            ('cluster-core-id', u32(core if cluster == 0 else core - 4)),
+            ('l2-cache-id', u32(cluster)),
+            ('l3-cache-id', u32(0)),
+            ('state', cstr('running' if core == 0 else 'stopped')),
+            ('timebase-frequency', u32(TIMEBASE)),
+            ('clock-frequency', u32(frequency)),
+        ]))
+    cpus = node('cpus', [ph(), ('#address-cells', u32(2)),
+                         ('#size-cells', u32(0))], cpu_nodes)
+
+    gic = node('gic', [
+        ph(),
+        ('compatible', cstr('arm,gic-v3')),
+        ('interrupt-controller', b''),
+        ('virtual-timer-intid', u32(19)),  # DTS PPI 3 => INTID 16 + 3
+        ('reg', u64(LAVENDER_GICD - SOC_BASE, GICD_SIZE,
+                    LAVENDER_GICR - SOC_BASE, GICR_SIZE)),
+    ])
+    uart = node('uart', [
+        ph(),
+        ('device_type', cstr('serial')),
+        ('compatible', cstr('qcom,msm-uartdm-v1.4') + cstr('qcom,msm-uartdm')),
+        ('reg', u64(LAVENDER_UART - SOC_BASE, 0x1000)),
+        ('clock-frequency', u32(TIMEBASE)),
+    ])
+    emmc = node('emmc', [
+        ph(),
+        ('device_type', cstr('block')),
+        ('compatible', cstr('qcom,sdhci-msm-v5')),
+        ('reg', u64(LAVENDER_EMMC - SOC_BASE, 0x1000,
+                    LAVENDER_EMMC_CMDQ - SOC_BASE, 0x1000)),
+        ('reg-names', cstr('hc_mem') + cstr('cmdq_mem')),
+    ])
+    arm_io = node('arm-io', [
+        ph(),
+        ('device_type', cstr('lavender-io')),
+        ('compatible', cstr('lavender-io') + cstr('arm-io')),
+        ('#address-cells', u32(2)),
+        ('#size-cells', u32(2)),
+        ('ranges', u64(0, SOC_BASE, 0x100000000 - SOC_BASE)),
+    ], [gic, uart, emmc])
+    memory = node('memory', [
+        ph(),
+        ('device_type', cstr('memory')),
+        ('reg', u64(LAVENDER_LOW_BASE, LAVENDER_LOW_SIZE,
+                    LAVENDER_HIGH_BASE, LAVENDER_HIGH_SIZE)),
+    ])
+    return node('device-tree', [
+        ph(),
+        ('compatible', cstr('xiaomi,lavender') + cstr('qcom,sdm660') + cstr('ARM64')),
+        ('model', cstr('Xiaomi Redmi Note 7 (lavender)')),
+        ('target-type', cstr('lavender')),
+        ('manufacturer', cstr('Xiaomi')),
+        ('#address-cells', u32(2)),
+        ('#size-cells', u32(2)),
+    ], [chosen, cpus, arm_io, memory])
+
+
+def build(seed=None, qemu=False, highmem=False, profile='sweet'):
     """qemu=True: same tree, but with QEMU virt's GIC addresses and CNTFRQ (tools/qemu-sweet.py)."""
+    if profile == 'lavender':
+        if qemu or highmem:
+            raise ValueError('lavender profile does not support sweet QEMU/highmem modifiers')
+        return build_lavender(seed=seed)
+    if profile != 'sweet':
+        raise ValueError(f'unknown ADT profile: {profile}')
     phys_base, mem_size = (HIGH_PHYS_BASE, HIGH_MEM_SIZE) if highmem else (PHYS_BASE, MEM_SIZE)
     # Carve the panic log off the top so the kernel never allocates over it.
     panic_base = phys_base + mem_size - PANIC_LOG_SIZE
@@ -242,9 +353,16 @@ def build(seed=None, qemu=False, highmem=False):
 
 
 if __name__ == '__main__':
-    root = build(qemu='--qemu' in sys.argv, highmem='--highmem' in sys.argv)
+    ap = argparse.ArgumentParser()
+    ap.add_argument('out')
+    ap.add_argument('--profile', choices=('sweet', 'lavender'), default='sweet')
+    ap.add_argument('--dump', action='store_true')
+    ap.add_argument('--qemu', action='store_true')
+    ap.add_argument('--highmem', action='store_true')
+    args = ap.parse_args()
+    root = build(profile=args.profile, qemu=args.qemu, highmem=args.highmem)
     blob = adt.serialize(root)
-    open(sys.argv[1], 'wb').write(blob)
-    if '--dump' in sys.argv:
+    open(args.out, 'wb').write(blob)
+    if args.dump:
         adt.dump(adt.parse(blob)[0])
-    print(f'{sys.argv[1]}: {len(blob)} bytes', file=sys.stderr)
+    print(f'{args.out}: {len(blob)} bytes', file=sys.stderr)
