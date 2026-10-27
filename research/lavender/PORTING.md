@@ -236,6 +236,36 @@ header, нулевой ramdisk, 64 MiB boot limit и гипотетическо�
 payload с appended FDT или требует gzip-обёртку/собственный DTB handoff.
 Кандидат подготовлен для одного будущего эксперимента, но не запускался.
 
+#### Stock-like gzip + DTB + ramdisk candidate
+
+Подготовлен отдельный
+`shim/out/lavender-diag-stocklike/lavender-diag-stocklike-boot.img`. В нём
+raw shim сжат gzip, после gzip сохранены оба оригинальных FDT, а ramdisk
+скопирован побайтно из stock. Header v1, page size, `kernel_addr=0x8000`,
+`ramdisk_addr=0x1000000`, `tags_addr=0x100`, `os_version` и cmdline совпадают
+со stock.
+
+Результаты:
+
+```
+boot size:       1683456
+kernel_size:      996479
+gzip stream:         653
+ramdisk_size:      676352
+SHA256 boot:      4e1911686c721abc18210e39a9a4ce0bb531c58fbd70317e9aad41e665a6cead
+SHA256 kernel:    f0af67c5f9ca230db830f0423d161db1ced478ebd2936033f62a2cbf27a178c9
+SHA256 ramdisk:   79dc913a3e05b519c1b231014b03aa1ddf5a16ebeef908f8604c37fcfd9e2c1f
+```
+
+Проверены gzip integrity/raw Image header, точное DTB-содержимое и порядок,
+ramdisk equality, header/cmdline, boot-размер и fixed-reserved intersections.
+При явной гипотезе ABL base `0x80000000` shim занимает
+`0x80008000..0x800fb47f`, ramdisk — `0x81000000..0x810a5200`; они не
+пересекаются. Но ramdisk находится внутри XNU-managed окна
+`0x80000000..0x85600000`, поэтому для запуска XNU кандидат имеет прямой
+конфликт и статус `NO-GO`. Абсолютный ABL base также не доказан. Запуск не
+предлагается.
+
 Добавлен отдельный `shim/build-lavender-diag-noramdisk.sh`. Он создаёт
 структурный кандидат через `mkbootimg --header_version 1 --ramdisk /dev/null`.
 Локальный результат имеет размер 24576 байт, `ramdisk_size=0`,
