@@ -137,6 +137,11 @@ USB как канал ранней диагностики не реализов�
 - AOSP `mkbootimg.py` записывает в header `base + kernel_offset`; сам header
   не хранит отдельное поле `base`:
   [mkbootimg.py](https://android.googlesource.com/platform/system/tools/mkbootimg/+/refs/heads/main/mkbootimg.py).
+- В актуальном AOSP пустой входной файл приводит к `ramdisk_size=0` и
+  `ramdisk_addr=0`, но это только поведение генератора; описание v1 всё равно
+  требует ненулевой ramdisk:
+  [mkbootimg.py](https://android.googlesource.com/platform/system/tools/mkbootimg/+/refs/heads/main/mkbootimg.py),
+  [bootimg.h](https://android.googlesource.com/platform/system/tools/mkbootimg/+/refs/heads/main/include/bootimg/bootimg.h).
 - Qualcomm LK `aboot.c` в открытой реализации вызывает `boot_linux()` с
   `hdr->kernel_addr`, `hdr->ramdisk_addr` и `hdr->tags_addr`; это подтверждает
   прямую семантику header, но не доказывает поведение закрытого lavender ABL:
@@ -147,6 +152,25 @@ USB как канал ранней диагностики не реализов�
   [Linux arm64 booting](https://kernel.org/doc/html/v5.17/arm64/booting.html).
 
 ## ABL lavender: результат поиска и границы доказательства
+
+### Экспериментальный v1 без ramdisk
+
+Добавлен отдельный `shim/build-lavender-diag-noramdisk.sh`. Он создаёт
+структурный кандидат через `mkbootimg --header_version 1 --ramdisk /dev/null`.
+Локальный результат имеет размер 24576 байт, `ramdisk_size=0`,
+`ramdisk_addr=0`, страницу 4096, `kernel_addr=0x8000` и укладывается в
+подтверждённый 64 MiB boot-раздел. `tools/check-lavender-bootv1-noramdisk.py`
+проверяет ARM64 Image header, `image_size`, page-aligned layout, отсутствие
+второго этапа/recovery-DTBO, границы payload и совпадение подтверждённых полей
+стокового v1.
+
+Статус намеренно `BLOCKED`: AOSP прямо называет kernel и ramdisk обязательными
+элементами v1 с ненулевым размером. Открытый Qualcomm LK пропускает чтение при
+нулевом размере, но это не доказывает поведение закрытого ABL Redmi Note 7.
+Кроме того, v1 не содержит полей `dtb_size`/`dtb_addr`; DTB должен быть
+передан отдельным legacy/appended или ABL handoff-механизмом. Для lavender не
+подтверждено, будет ли DTB в `x0`, `tags_addr` или сформирован ABL отдельно.
+Нулевой ramdisk не устраняет этот блокер и не является разрешением на запуск.
 
 В локальных файлах, подкаталогах рабочего дерева, `/tmp` и доступных локальных
 носителях подходящего `abl.elf`, `abl.img` или fastboot-архива lavender не

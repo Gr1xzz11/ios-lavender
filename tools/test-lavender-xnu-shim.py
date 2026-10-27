@@ -13,6 +13,7 @@ def main():
     loader = (SHIM / "lavender_loader.c").read_text(encoding="utf-8")
     console = (SHIM / "lavender_console.c").read_text(encoding="utf-8")
     build = (SHIM / "build-lavender-xnu.sh").read_text(encoding="utf-8")
+    noramdisk = (SHIM / "build-lavender-diag-noramdisk.sh").read_text(encoding="utf-8")
 
     assert '"ARM\\x64"' in start
     assert "msr\tspsel" in start and "shim_lavender_main" in start
@@ -24,6 +25,10 @@ def main():
     assert "build.sh" not in build
     assert "lavender_loader.c" in build
     assert "lavender_console.c" in build
+    assert "--header_version 1" in noramdisk
+    assert "--ramdisk /dev/null" in noramdisk
+    assert "check-lavender-bootv1-noramdisk.py" in noramdisk
+    assert "--dtb" not in noramdisk
     print("lavender XNU shim static test: PASS")
 
 

@@ -1,5 +1,22 @@
 # iOS 16 on sweet (Redmi Note 10 Pro, SM7150) - working notes
 
+### >>> UPDATE 2026-10-27: lavender zero-ramdisk v1 experiment <<<
+
+- AOSP v1 specifies a non-empty ramdisk; its current `mkbootimg.py` can still
+  emit `ramdisk_size=0`/`ramdisk_addr=0` for an empty input. Open Qualcomm LK
+  skips the zero-sized ramdisk read, but this does not prove closed lavender
+  ABL compatibility.
+- Added `shim/build-lavender-diag-noramdisk.sh` and
+  `tools/check-lavender-bootv1-noramdisk.py`. Local candidate is 24 KiB,
+  header v1, kernel 18384 bytes, page 4096, `kernel_addr=0x8000`, zero
+  ramdisk, no DTB field, within the 64 MiB partition. The checker reports
+  `BLOCKED` by design.
+- Regression tests and the local diagnostic build pass. No XNU rebuild or CI
+  run is needed.
+- Remaining blocker: closed lavender ABL acceptance and DTB handoff remain
+  unknown; a matching fastboot ABL with recoverable loader code or controlled
+  boot observation is needed before this candidate can be considered runnable.
+
 ### >>> UPDATE 2026-10-27: lavender XNU artifact preflight <<<
 
 - Successful run `40487392402` artifact `kernel.development.lavender` was
