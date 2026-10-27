@@ -1,5 +1,15 @@
 # iOS 16 on sweet (Redmi Note 10 Pro, SM7150) - working notes
 
+### >>> UPDATE 2026-10-27: HyperOS build provenance attempt <<<
+
+- One explicitly authorized `fastboot reboot` was executed at
+  `2026-10-27T18:57:06+07:00`; fastboot returned `Rebooting OKAY` and exit 0.
+- ADB did not appear during the bounded wait. A subsequent read-only
+  `adb devices` returned exit 0 with an empty device list, so the requested
+  `getprop` and `uname -a` commands were not run.
+- Current HyperOS fingerprint/version remains unknown. Full command output is
+  saved at `/tmp/lavender-current-build-20261027.log`.
+
 ### >>> UPDATE 2026-10-27: current-build provenance and v1 second address <<<
 
 - Read-only fastboot identified `product: lavender` and `unlocked: yes`.
