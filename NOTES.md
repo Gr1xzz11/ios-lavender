@@ -37,6 +37,7 @@
   that 151552-byte file was extracted locally. It is stripped ELF32 ARM with
   entry/PT_LOAD `0x9fa00000`, an EFI FV container, and no directly recoverable
   Android kernel/DTB handoff code. Source archive and phone were untouched.
+- Commit: `5a9a192` (`lavender: analyze official recovery ABL`).
 
 ## Agent handoff / active work (2026-10-15, latest)
 
