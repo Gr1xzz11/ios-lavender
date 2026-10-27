@@ -14,7 +14,7 @@ fi
 
 devices=$(adb devices -l)
 printf '%s\n' "$devices"
-count=$(printf '%s\n' "$devices" | awk '$2 == "device" { n++ } END { print n + 0 }')
+count=$(printf '%s\n' "$devices" | awk '$2 == "device" || $2 == "recovery" { n++ } END { print n + 0 }')
 if [ "$count" -ne 1 ]; then
     echo "expected exactly one ready recovery ADB device, found $count" >&2
     exit 3

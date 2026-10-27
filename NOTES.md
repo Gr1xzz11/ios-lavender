@@ -1,5 +1,18 @@
 # iOS 16 on sweet (Redmi Note 10 Pro, SM7150) - working notes
 
+### >>> UPDATE 2026-10-27: recovery boot provenance confirmed <<<
+
+- OrangeFox ADB is available: `102801bd`, product `lavender`, model
+  `Redmi_Note_7`, status `recovery`.
+- Read-only recovery path `/dev/block/by-name/boot` resolves to
+  `/dev/block/mmcblk0p60`; reported size is exactly `67108864` bytes.
+- Pulled local copy: `/tmp/lavender-boot-from-recovery.img`.
+- SHA-256 matches `backup/lavender-boot.img` exactly:
+  `58aae5d8dbae3358cb4d83997ea0d5c1536a06214f933fea22a81758b2ed44d6`.
+  The current boot partition therefore matches the existing backup byte-for-
+  byte. The recovery pull script was corrected to accept ADB status
+  `recovery` as well as `device`.
+
 ### >>> UPDATE 2026-10-27: recovery ADB boot-copy procedure prepared <<<
 
 - No automatic reboot or recovery transition was performed. The next step is
