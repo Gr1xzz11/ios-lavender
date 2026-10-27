@@ -43,9 +43,12 @@ assert "sweet_console_muted" in PREFLIGHT.read_text(encoding="utf-8")
 assert "sweet_sample_task" in PREFLIGHT.read_text(encoding="utf-8")
 assert STRICTIFY.exists()
 assert "Project patch failed" in STRICTIFY.read_text(encoding="utf-8")
+assert "PROJECT_PATCH_LOG" in STRICTIFY.read_text(encoding="utf-8")
 workflow = WORKFLOW.read_text(encoding="utf-8")
 assert "tools/preflight-xnu.py --patch-dir dxb/patches" in workflow
 assert "tools/strictify-dxb.py dxb/build.sh" in workflow
+assert "dxb/.project-patches-applied" in workflow
+assert "reverse --check" not in workflow
 check_hunks(text)
 assert "SUPPORTED_ARM64_MACHINE_CONFIGS = BCM2837 T6000 T8101 T8103 VMAPPLE SWEET LAVENDER" in text
 assert "MACHINE_FLAGS_ARM64_LAVENDER" in text

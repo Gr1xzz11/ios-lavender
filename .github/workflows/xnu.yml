@@ -96,14 +96,19 @@ jobs:
         run: |
           expected="${MACHINE_CONFIG,,}"
           test -e "dxb/xnu/config/MASTER.arm64.${expected}"
-          failed=0
-          for patch in dxb/patches/????-*.patch; do
-            if ! git -C dxb/xnu apply --reverse --check "$GITHUB_WORKSPACE/$patch" >/dev/null 2>&1; then
-              echo "ERROR: project patch was not applied: $patch"
-              failed=1
-            fi
-          done
-          test "$failed" = 0
+          python3 - <<'PY'
+          from pathlib import Path
+          import sys
+          expected = sorted(p.name for p in Path("dxb/patches").glob("????-*.patch"))
+          applied_path = Path("dxb/.project-patches-applied")
+          applied = applied_path.read_text(encoding="utf-8").splitlines()
+          if applied != expected or len(applied) != len(set(applied)):
+              print("ERROR: dxb patch application manifest mismatch")
+              print("expected:", expected)
+              print("applied:", applied)
+              sys.exit(1)
+          print(f"All {len(applied)} numbered project patches applied in order")
+          PY
           echo "All 82 project patches are applied; MASTER.arm64.${expected} exists"
 
       - name: Collect kernel artifact

@@ -44,6 +44,11 @@
 - No local Clang component compile is available: this Linux environment has no
   `clang`/Apple SDK; `tools/xnu-cc.py` remains suitable when a CI compile log
   and Apple-fork Clang are available.
+- Run `40483986729` built the lavender kernel successfully, but the old
+  post-build reverse-apply check falsely reported many patches as missing:
+  later patches legitimately changed the same context. Replaced that check
+  with an ordered application manifest emitted by strictified dxb. This is a
+  verification fix, not a new XNU compile result.
 
 ### >>> UPDATE 2026-10-27: fixed XNU LAVENDER machine-config rejection <<<
 
