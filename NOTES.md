@@ -1,5 +1,24 @@
 # iOS 16 on sweet (Redmi Note 10 Pro, SM7150) - working notes
 
+### >>> UPDATE 2026-10-27: lavender audit milestone <<<
+
+- Created branch `lavender-port`; no phone commands or writes were performed.
+- Audited shim/mkadt/mkpayload/build. Existing path is sweet-specific and
+  unchanged: synthetic ADT, embedded DTB in Android v2, framebuffer/GIC/timer/UFS.
+- Confirmed lavender boot header v1: page 4096, kernel `0x8000`, ramdisk
+  `0x1000000`, tags `0x100`, no embedded DTB.
+- Added isolated no-XNU diagnostic image and structural checker. It avoids
+  framebuffer, UFS, GIC, timer and PSCI; UARTDM status `0x08`/TX-ready bit 2
+  gates writes to FIFO `0x70` at confirmed base `0x0c170000`.
+- LLVM local build passed: Android v1, kernel 17232 bytes, no embedded DTB.
+  Repository validation passed (81 patches, 16 Python, 8 shell checks).
+- Commit: `ae947d1` (`lavender: add isolated diagnostic boot shim`). Final
+  rebuild after UART status polling: kernel 17424 bytes, checker passed with
+  `OK: Android v1, page=4096, kernel=17424, no embedded DTB`.
+- Details and blockers: `research/lavender/PORTING.md`. Next is source/read-only
+  confirmation of ABL x0 DTB handoff and UART clock/pinctrl state; no physical action
+  is authorized by this milestone.
+
 ## Agent handoff / active work (2026-10-15, latest)
 
 ### >>> UPDATE 2026-10-18 (read first, then the 10-17 handoff below) <<<
