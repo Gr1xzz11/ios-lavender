@@ -30,6 +30,19 @@
   header, zero ramdisk and hypothetical early-RAM placement. Whether ABL
   accepts raw Image+FDT or requires gzip remains unknown.
 
+### >>> UPDATE 2026-10-27: stock-like diagnostic candidate prepared <<<
+
+- Built, but did not run, `shim/out/lavender-diag-stocklike/
+  lavender-diag-stocklike-boot.img`: gzip-compressed diagnostic Image, exact
+  stock appended DTBs, and exact stock ramdisk/cmdline/header placement.
+- Result: boot 1683456 bytes, `kernel_size=996479`, gzip stream 653 bytes,
+  `ramdisk_size=676352`, boot SHA256
+  `4e1911686c721abc18210e39a9a4ce0bb531c58fbd70317e9aad41e665a6cead`.
+- Hypothetical base `0x80000000`: shim
+  `0x80008000..0x800fb47f`, ramdisk `0x81000000..0x810a5200`; no mutual
+  overlap, but ramdisk overlaps the XNU-managed window. Status is NO-GO for
+  XNU and no launch is proposed.
+
 ### >>> UPDATE 2026-10-27: lavender first-boot preflight <<<
 
 - `fastboot` 37.0.1 is installed, but `fastboot devices` and read-only

@@ -15,6 +15,7 @@ def main():
     build = (SHIM / "build-lavender-xnu.sh").read_text(encoding="utf-8")
     noramdisk = (SHIM / "build-lavender-diag-noramdisk.sh").read_text(encoding="utf-8")
     dtb_build = (SHIM / "build-lavender-diag-dtb-noramdisk.sh").read_text(encoding="utf-8")
+    stocklike_build = (SHIM / "build-lavender-diag-stocklike.sh").read_text(encoding="utf-8")
 
     assert '"ARM\\x64"' in start
     assert "msr\tspsel" in start and "shim_lavender_main" in start
@@ -33,6 +34,9 @@ def main():
     assert "make-lavender-diag-dtb.py" in dtb_build
     assert "check-lavender-diag-dtb.py" in dtb_build
     assert "--ramdisk /dev/null" in dtb_build
+    assert "make-lavender-diag-stocklike.py" in stocklike_build
+    assert "check-lavender-diag-stocklike.py" in stocklike_build
+    assert "--ramdisk \"$OUT/ramdisk\"" in stocklike_build
     print("lavender XNU shim static test: PASS")
 
 
