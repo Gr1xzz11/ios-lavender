@@ -62,6 +62,9 @@
   0031 and 0041 remain intentionally skipped in this replay because they
   target the HFS tree staged by 0026-stage-hfs.sh.
 - Whitespace warnings in 0006, 0049 and 0058 are non-fatal and unchanged.
+- Commit `9562439` was pushed. A replacement workflow dispatch was attempted
+  with the required lavender parameters, but GitHub returned HTTP 403 because
+  the Actions API rate limit is still exhausted; no credentials were changed.
 
 ### >>> UPDATE 2026-10-27: fixed XNU LAVENDER machine-config rejection <<<
 
