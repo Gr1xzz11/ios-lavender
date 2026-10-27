@@ -32,7 +32,8 @@ ap.add_argument("stock_boot")
 ap.add_argument("diag_boot")
 ap.add_argument("diag_elf")
 ap.add_argument("--nm", default="llvm-nm")
-ap.add_argument("--ram-base", type=lambda x: int(x, 0), default=0x80000000)
+ap.add_argument("--ram-base", type=lambda x: int(x, 0),
+                help="hypothetical ABL relocation base; absent from v1 header")
 ap.add_argument("--reserved-start", type=lambda x: int(x, 0), default=0x85700000)
 a = ap.parse_args()
 
@@ -54,10 +55,14 @@ assert syms["_head"] == 0
 assert 0 < syms["_start"] < syms["_end"]
 assert syms["_stack_top"] == syms["_end"]
 assert syms["_end"] == len(image)
-load = a.ram_base + diag["kernel_addr"]
-end = load + len(image)
-assert end < a.reserved_start, f"image ends in reserved-memory: {end:#x}"
-print(f"OK: v1 fields match stock; load={load:#x}..{end:#x}; "
-      f"entry={load + syms['_head']:#x}; _start={load + syms['_start']:#x}; "
-      f"stack={load + syms['_stack_top']:#x}; "
-      f"reserved-start={a.reserved_start:#x}")
+if a.ram_base is None:
+    print("OK: v1 fields match stock; header kernel_addr=0x%x; "
+          "physical base/DTB placement unresolved by header" % diag["kernel_addr"])
+else:
+    load = a.ram_base + diag["kernel_addr"]
+    end = load + len(image)
+    assert end < a.reserved_start, f"image ends in reserved-memory: {end:#x}"
+    print(f"OK: v1 fields match stock; hypothetical load={load:#x}..{end:#x}; "
+          f"entry={load + syms['_head']:#x}; _start={load + syms['_start']:#x}; "
+          f"stack={load + syms['_stack_top']:#x}; "
+          f"reserved-start={a.reserved_start:#x}")

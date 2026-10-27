@@ -20,11 +20,13 @@
   is authorized by this milestone.
 - Preflight audit added `tools/preflight-lavender-diag.py`. Fresh result after
   ARG0/ARG1/ARG2 handoff instrumentation and cmdline fix: v1 fields match stock;
-  conditional load `0x80008000..0x8000c7d0`, entry `0x80008000`, `_start`
-  `0x80008040`, stack top `0x8000c7d0`, reserved start `0x85700000`.
+  header `kernel_addr=0x8000`; physical base/DTB placement unresolved by
+  header. The `0x80008000..0x8000c7d0` range is only the explicit
+  `--ram-base 0x80000000` hypothesis, not confirmed ABL behavior.
   UART-off/pinctrl-off behavior is documented as no-log/no-proof; no fallback
-  channel exists and no phone operation was performed.
+  channel exists (JTAG/ICE is not confirmed) and no phone operation was performed.
 - Commit: `0a8d620` (`lavender: add diagnostic preflight audit`).
+- Commit: `43576a2` (`lavender: make boot address preflight explicit`).
 
 ## Agent handoff / active work (2026-10-15, latest)
 

@@ -16,6 +16,23 @@
 - Splash reserve/framebuffer и `0xb0000000` не считаются безопасными для
   диагностического кода; shim в framebuffer не пишет.
 
+## Внешняя source-level сверка
+
+- AOSP `boot_img_hdr_v1` описывает `kernel_addr` как physical load address и
+  для v1 требует page-aligned kernel/ramdisk/second/recovery-dtbo layout:
+  [bootimg.h](https://android.googlesource.com/platform/system/tools/mkbootimg/+/refs/heads/android16-release/include/bootimg/bootimg.h).
+- AOSP `mkbootimg.py` записывает в header `base + kernel_offset`; сам header
+  не хранит отдельное поле `base`:
+  [mkbootimg.py](https://android.googlesource.com/platform/system/tools/mkbootimg/+/refs/heads/main/mkbootimg.py).
+- Qualcomm LK `aboot.c` в открытой реализации вызывает `boot_linux()` с
+  `hdr->kernel_addr`, `hdr->ramdisk_addr` и `hdr->tags_addr`; это подтверждает
+  прямую семантику header, но не доказывает поведение закрытого lavender ABL:
+  [aboot.c](https://github.com/tsgan/qualcomm/blob/master/lk/app/aboot/aboot.c).
+- ARM64 Linux boot protocol ожидает DTB в `x0`, `x1..x3 = 0`, EL1/EL2 и MMU
+  off; diagnostic shim теперь печатает все исходные `x0..x2`, чтобы проверить
+  фактический ABL handoff:
+  [Linux arm64 booting](https://kernel.org/doc/html/v5.17/arm64/booting.html).
+
 ## Изменения
 
 `shim/build-lavender-diag.sh` собирает отдельный arm64 Linux Image и
@@ -39,18 +56,17 @@ sweet/XNU pipeline; перенос synthetic ADT на lavender до подтве
 был бы предположением.
 
 `tools/preflight-lavender-diag.py` дополнительно сравнивает структурные поля
-с `backup/lavender-boot.img` и проверяет ELF symbols. При условном mapping
-`RAM base 0x80000000 + header kernel_addr 0x8000` он получил:
+с `backup/lavender-boot.img` и проверяет ELF symbols. Без искусственно
+заданной relocation base он получает:
 
 ```
-load=0x80008000..0x8000c7d0
-entry=0x80008000, _start=0x80008040, stack=0x8000c7d0
-reserved-start=0x85700000
+header kernel_addr=0x8000; physical base/DTB placement unresolved by header
 ```
 
-Это доказывает непротиворечивость образа и отсутствие пересечения с первым
-известным reserved-memory диапазоном из candidate DTS, но не доказывает, что
-ABL lavender использует именно этот физический mapping или где разместит DTB.
+Если явно подставить гипотезу `--ram-base 0x80000000`, диапазон получается
+`0x80008000..0x8000c7d0`, entry `0x80008000`, stack top `0x8000c7d0`, ниже
+`0x85700000`. Это проверяет только арифметику гипотезы; ABL lavender и DTB
+placement этим не подтверждаются.
 
 ## Проверка
 
@@ -77,6 +93,14 @@ OK: Android v1, page=4096, kernel=17232, no embedded DTB
 Следующий этап: source-level/read-only сопоставление DTB и UARTDM register map,
 затем статический harness для entry/load/stack/memory ranges. Только после
 этого проектировать lavender ADT и отдельный payload profile для XNU.
+
+Надёжного обычного канала подтверждения выполнения без UART не найдено:
+boot.img v1 не предоставляет completion/status reply, ABL не обязан сохранять
+регистры после handoff, а RAM-маркер теряется или недоступен после reset.
+JTAG/ICE мог бы наблюдать PC/GPR без записи на устройство, но такой интерфейс
+не подтверждён и не является доступным runtime-механизмом. Добавлять для этого
+PSCI reset, watchdog, IMEM/restart-reason или framebuffer было бы опасным
+расширением scope.
 
 Если UART clock выключен, чтение status может вернуть неготовность и shim
 пропустит все TX-записи; если interconnect/peripheral не отвечает на gated
