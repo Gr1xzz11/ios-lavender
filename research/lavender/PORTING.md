@@ -3,6 +3,34 @@
 Дата аудита: 2026-10-27. Ветка `lavender-port` добавляет только
 изолированный диагностический shim; существующий sweet-путь не меняется.
 
+## XNU artifact preflight (run 40487392402)
+
+Артефакт `xnu-kernel` распакован во временный каталог и не добавлен в git.
+`SHA256SUMS` совпадает с фактическим файлом:
+
+```
+40a9f79d3dbf63344d5dd3365dbcb2ced9298f06e86332840c93d45e48683cd5  kernel.development.lavender
+```
+
+Файл — Mach-O 64-bit ARM64 PIE, entry point
+`0xfffffe0007487488` находится в `__TEXT_EXEC`; верхняя граница сегментов —
+`0xfffffe00080ac000`. Chained fixups отсутствуют. Статическая проверка
+реализована в `tools/preflight-lavender-xnu.py`.
+
+Текущая арифметика `mkpayload.py` физически кладёт сегменты в
+`0x81004000..0x820ac000` при lavender `dram-base=0x80000000`; сам диапазон
+ядра не пересекает фиксированные carve-out’ы DTS. Но `boot_args` передают XNU
+`memSize=0x80000000`, то есть XNU может считать управляемой всю нижнюю RAM и
+выделить страницы поверх wlan/modem/ADSP/splash/pstore. Preflight намеренно
+завершается `BLOCKED` на этом условии. Это блокер boot.img, а не проблема
+Mach-O или entry point.
+
+Следующий кодовый шаг — отдельный подтверждённый memory-map path для XNU:
+исключить fixed и dynamic reserved-memory из allocator либо передавать
+консервативное проверенное окно RAM с согласованными `physBase`, `virtBase`,
+`topOfKernelData` и 16K bootstrap page tables. До этого boot image с XNU не
+генерируется.
+
 ## Подтверждено локальными артефактами
 
 - `backup/lavender-boot.img` имеет Android boot header v1, page size 4096,

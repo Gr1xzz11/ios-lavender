@@ -1,5 +1,25 @@
 # iOS 16 on sweet (Redmi Note 10 Pro, SM7150) - working notes
 
+### >>> UPDATE 2026-10-27: lavender XNU artifact preflight <<<
+
+- Successful run `40487392402` artifact `kernel.development.lavender` was
+  verified locally: SHA-256
+  `40a9f79d3dbf63344d5dd3365dbcb2ced9298f06e86332840c93d45e48683cd5`, Mach-O
+  ARM64 PIE, entry `0xfffffe0007487488`, `kernel_end=0xfffffe00080ac000`, no
+  chained fixups.
+- Current `mkpayload.py` arithmetic places the kernel at
+  `0x81004000..0x820ac000`; that range itself is below fixed lavender
+  reservations. The current ADT/boot_args nevertheless advertise the entire
+  low 2 GiB as XNU-managed RAM, so XNU's allocator can overwrite fixed
+  wlan/modem/ADSP/splash/pstore regions.
+- Added `tools/preflight-lavender-xnu.py`; it verifies the artifact, ADT two-bank
+  map, Mach-O entry/segments and fixed DTS reservations, then fails closed on
+  the managed-RAM overlap. It reproduced the blocker locally. No XNU rebuild or
+  boot image was produced.
+- Next implementation milestone: resolve the XNU lavender memory-map contract
+  with a checked reserved-memory-aware bootstrap path; do not paper over it by
+  moving only the kernel or inventing an ABL address.
+
 ### >>> UPDATE 2026-10-27: lavender CI link failure analyzed <<<
 
 - Archive `logs_109729891426.zip` is the run for commit `e57e910`; preflight,
