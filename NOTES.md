@@ -1,5 +1,18 @@
 # iOS 16 on sweet (Redmi Note 10 Pro, SM7150) - working notes
 
+### >>> UPDATE 2026-10-27: recovery ADB boot-copy procedure prepared <<<
+
+- No automatic reboot or recovery transition was performed. The next step is
+  waiting for the user to enter OrangeFox manually.
+- Added `tools/pull-lavender-boot-recovery-ro.sh`. It requires exactly one
+  ready `adb devices -l` entry, checks `adb shell`, locates a readable
+  `/dev/block/by-name/boot` variant, reads its size, copies it with
+  `adb exec-out dd` only to a new local file, verifies the byte count and
+  compares SHA-256/bytes with `backup/lavender-boot.img`.
+- The procedure contains no `adb push`, remount, device-node output, flash,
+  erase or reboot operation. It has only passed shell syntax and repository
+  validation; it has not been run without a recovery ADB device.
+
 ### >>> UPDATE 2026-10-27: HyperOS build provenance attempt <<<
 
 - One explicitly authorized `fastboot reboot` was executed at
