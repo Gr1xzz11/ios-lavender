@@ -43,6 +43,9 @@ for path in (
     "xnu/patches/0020-sweet-portable-aes-cbc.patch",
 ):
     assert "SWEET LAVENDER" in Path(path).read_text(encoding="utf-8"), path
+timer_patch = Path("xnu/patches/0017-sweet-device-tree-virtual-timer-irq.patch").read_text(encoding="utf-8")
+assert "defined(SWEET) || defined(LAVENDER)" in timer_patch
+assert "#if defined(ARM64_BOARD_CONFIG_SWEET) || defined(ARM64_BOARD_CONFIG_LAVENDER)" in timer_patch
 for path in (
     "xnu/patches/0019-stage-libpthread.sh",
     "xnu/patches/0020-stage-bearssl.sh",

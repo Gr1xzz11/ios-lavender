@@ -1,5 +1,18 @@
 # iOS 16 on sweet (Redmi Note 10 Pro, SM7150) - working notes
 
+### >>> UPDATE 2026-10-27: first lavender CI compile blocker <<<
+
+- Run `40481926193` reached XNU compilation with `CURRENT_MACHINE_CONFIG=LAVENDER`.
+- Preflight and dependency steps passed; the build failed in `osfmk/arm64/sleh.c`:
+  `sweet_vtimer_intid` was undeclared because patch 0017 guarded its definition
+  and prototype with SWEET only, while the lavender machine config reuses the
+  shared GIC/timer implementation.
+- Extended patch 0017's definition, DT property parsing and prototype guards to
+  include LAVENDER. Added a regression assertion to
+  `tools/test-xnu-machine-config.py`.
+- Local static validation passed. Next: commit, push and rerun `xnu.yml` with
+  the standard lavender inputs; analyze the next compiler/linker result.
+
 ### >>> UPDATE 2026-10-27: fixed XNU LAVENDER machine-config rejection <<<
 
 - CI root cause: `0082-lavender-board-profile.patch` had invalid unified-diff
