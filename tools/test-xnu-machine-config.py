@@ -65,8 +65,10 @@ crash_patch = Path("xnu/patches/0043-sweet-console-crash-log.patch").read_text(e
 assert crash_patch.count("defined(ARM64_BOARD_CONFIG_SWEET) || defined(ARM64_BOARD_CONFIG_LAVENDER)") == 2
 mute_patch = Path("xnu/patches/0067-sweet-console-mute.patch").read_text(encoding="utf-8")
 assert mute_patch.count("defined(ARM64_BOARD_CONFIG_SWEET) || defined(ARM64_BOARD_CONFIG_LAVENDER)") == 2
+assert mute_patch.count("#if defined(ARM64_BOARD_CONFIG_SWEET)\n") == 2
 log_patch = Path("xnu/patches/0047-sweet-persistent-console-log.patch").read_text(encoding="utf-8")
-assert log_patch.count("defined(ARM64_BOARD_CONFIG_SWEET) || defined(ARM64_BOARD_CONFIG_LAVENDER)") == 2
+assert log_patch.count("#if defined(ARM64_BOARD_CONFIG_SWEET)\n") == 2
+assert "sweet_log_append" in log_patch
 for path in (
     "xnu/patches/0019-stage-libpthread.sh",
     "xnu/patches/0020-stage-bearssl.sh",

@@ -209,6 +209,32 @@ Xcode/macOS SDK, Kernel Development Kit и `iig`; workflow
 компиляции. Для CI надо запускать workflow с `machine_config=LAVENDER`, не
 меняя default `SWEET`.
 
+## Разбор падения CI 2026-10-27
+
+Архив `logs_109729891426.zip` относится к commit `e57e910`. Preflight,
+применение всех 82 numbered-патчей и компиляция прошли до финальной
+линковки `kernel.development.lavender`.
+
+Фатальная ошибка была:
+
+```
+Undefined symbols for architecture arm64:
+  _sweet_log_append, referenced from serial_console.o
+```
+
+Реализация `sweet_log_append` находится в `bsd/dev/sweet_ufs.c`, который
+защищён `ARM64_BOARD_CONFIG_SWEET`; включать этот UFS-код в lavender ради
+символа нельзя, поскольку подтверждённое хранилище lavender — eMMC.
+Патчи 0047 и 0067 исправлены: persistent UFS-log остаётся SWEET-only,
+а общий lavender console mute сохраняется. Добавлены статические проверки
+этих guard-условий.
+
+Свежая последовательная replay-проверка на `xnu-8796.141.3` применяет все
+не-staged проектные патчи до 0082; ожидаемо пропущены только 0031 и 0041,
+которым нужен staging HFS. Локальные preflight, machine-config,
+`validate-repo.py` и `git diff --check` проходят. Следующий CI должен
+проверить линковку уже без ссылки на `sweet_log_append` в lavender.
+
 2026-10-27 локальная сборка через `clang --target=aarch64-none-elf`, lld и
 `llvm-objcopy` (системного `aarch64-linux-gnu-gcc` нет):
 

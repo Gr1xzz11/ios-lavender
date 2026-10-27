@@ -95,6 +95,12 @@ def check_static_inputs(patch_dir: Path, machine: str) -> list[Path]:
                     fail(f"{name} lacks lavender guard {needle!r}")
         if "sweet_console_muted" not in (patch_dir / "0067-sweet-console-mute.patch").read_text(encoding="utf-8"):
             fail("console mute symbol definition is absent")
+        log_patch = (patch_dir / "0047-sweet-persistent-console-log.patch").read_text(encoding="utf-8")
+        if "#if defined(ARM64_BOARD_CONFIG_SWEET)\n" not in log_patch:
+            fail("persistent UFS console log must remain SWEET-only; LAVENDER uses eMMC")
+        mute_patch = (patch_dir / "0067-sweet-console-mute.patch").read_text(encoding="utf-8")
+        if mute_patch.count("#if defined(ARM64_BOARD_CONFIG_SWEET)\n") < 2:
+            fail("lavender console mute must not reference the SWEET-only log symbol")
         if "sweet_sample_task" not in (patch_dir / "0054-sweet-process-sampler.patch").read_text(encoding="utf-8"):
             fail("process sampler symbol is absent")
     return patches

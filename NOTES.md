@@ -1,5 +1,20 @@
 # iOS 16 on sweet (Redmi Note 10 Pro, SM7150) - working notes
 
+### >>> UPDATE 2026-10-27: lavender CI link failure analyzed <<<
+
+- Archive `logs_109729891426.zip` is the run for commit `e57e910`; preflight,
+  all 82 numbered project patches and compilation passed through the final
+  kernel link.
+- Root cause: `serial_console.o` called `sweet_log_append`, whose only
+  implementation is in SWEET UFS code guarded out for LAVENDER. Enabling that
+  UFS source would be wrong because lavender's confirmed storage is eMMC.
+- Changed patches 0047/0067 so persistent UFS logging remains SWEET-only while
+  the shared console mute remains available to LAVENDER. Added static guards in
+  `tools/preflight-xnu.py` and `tools/test-xnu-machine-config.py`.
+- Local checks and a fresh sequential replay through patch 0082 pass. Pending:
+  commit/push and one CI run to verify the linker result; GitHub Actions API
+  rate limiting previously blocked dispatch, so no new run is claimed yet.
+
 ### >>> UPDATE 2026-10-27: first lavender CI compile blocker <<<
 
 - Run `40481926193` reached XNU compilation with `CURRENT_MACHINE_CONFIG=LAVENDER`.
