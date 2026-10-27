@@ -1,5 +1,24 @@
 # iOS 16 on sweet (Redmi Note 10 Pro, SM7150) - working notes
 
+### >>> UPDATE 2026-10-27: current-build provenance and v1 second address <<<
+
+- Read-only fastboot identified `product: lavender` and `unlocked: yes`.
+  `current-slot`, `slot-count`, `slot-suffixes` and `version` are unsupported;
+  `version-bootloader` and `version-baseband` are empty. `adb devices` showed
+  no Android device, so no build fingerprint or `uname -a` is available without
+  leaving fastboot; no transition was attempted.
+- The local backup remains unproven as the currently installed HyperOS boot
+  image. The recovery ZIP boot image is a different image and cannot establish
+  provenance.
+- Root cause of the stock-like `second_addr=0`: `mkbootimg` writes zero when
+  no `--second` payload is supplied, even if `--second_offset` is specified.
+  Added `tools/preserve-lavender-bootv1-fields.py` and a static regression
+  assertion; the build now copies the stock v1 `second_addr=0x00f00000`.
+- Rebuilt local diagnostic artifact (not run): SHA-256
+  `bcc5aba078608a2d9efc467c0de2c628363f848ae625fab2e30d273da4fb56a5`.
+  Its header fields now match the stock backup for `second_addr`; all existing
+  gzip/DTB/ramdisk/layout checks pass.
+
 ### >>> UPDATE 2026-10-27: stock lavender boot control-artifact audit <<<
 
 - Experiments with modified lavender boot images are stopped. No new boot

@@ -37,6 +37,7 @@ def main():
     assert "make-lavender-diag-stocklike.py" in stocklike_build
     assert "check-lavender-diag-stocklike.py" in stocklike_build
     assert "--ramdisk \"$OUT/ramdisk\"" in stocklike_build
+    assert "preserve-lavender-bootv1-fields.py" in stocklike_build
     print("lavender XNU shim static test: PASS")
 
 

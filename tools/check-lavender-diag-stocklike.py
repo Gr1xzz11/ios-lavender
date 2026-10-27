@@ -60,7 +60,8 @@ def main() -> None:
     assert h[1:2] == (0x8000,)
     assert h[9] == sh["values"][9]
     assert h[3] == 0x1000000 and h[6] == 0x100 and h[7] == PAGE and h[8] == 1
-    assert h[2] == len(srd) and ext == sh["ext"] and boot[64:1600].split(b"\0", 1)[0] == sh["cmdline"]
+    assert h[2] == len(srd) and h[5] == sh["values"][5]
+    assert ext == sh["ext"] and boot[64:1600].split(b"\0", 1)[0] == sh["cmdline"]
     assert h[4] == 0 and ext[0] == 0 and ext[2] == 1648
     kernel = boot[PAGE:PAGE + h[0]]
     z = zlib.decompressobj(31); raw = z.decompress(kernel); z.flush()

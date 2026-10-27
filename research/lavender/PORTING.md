@@ -318,6 +318,13 @@ patch year 2021, month 8. Это полезный ориентир совмес�
 
 ## Контрольный stock `boot.img` и установленная HyperOS
 
+Read-only fastboot подтвердил `product=lavender` и `unlocked=yes`. Переменные
+`current-slot`, `slot-count`, `slot-suffixes` и `version` этот fastboot не
+поддерживает; `version-bootloader` и `version-baseband` возвращаются пустыми.
+`adb devices` не показал Android-устройство, поэтому fingerprint и `uname -a`
+локально получить нельзя без перехода из fastboot в Android. Такой переход не
+выполнялся.
+
 Эксперименты с модифицированными boot images остановлены. Локальный
 `backup/lavender-boot.img` прошёл read-only structural preflight:
 
@@ -369,6 +376,27 @@ recovery ROM `V12.5.1.0.QFGEUXM` из локального архива, а не
 fastboot-пакета именно текущей сборки, либо read-only build fingerprint и
 версия, по которым можно доказать совпадение с локальным backup. До этого
 новые boot-запуски не планируются.
+
+### Исправление `second_addr`
+
+Причина прежнего расхождения установлена экспериментом над локальным
+генератором: `mkbootimg` оставляет `second_addr=0`, когда `--second` не задан;
+одного `--second_offset` недостаточно. Добавлен
+`tools/preserve-lavender-bootv1-fields.py`, который после упаковки переносит
+`second_addr` из stock header и проверяет, что `second_size` остаётся нулём.
+`tools/check-lavender-diag-stocklike.py` теперь также сравнивает это поле.
+
+Регрессия воспроизведена до исправления и затем устранена. Новый локальный
+образ имеет header:
+
+```
+(996479, 32768, 676352, 16777216, 0, 15728640, 256, 4096, 1, 335544664)
+```
+
+SHA-256 нового файла:
+`bcc5aba078608a2d9efc467c0de2c628363f848ae625fab2e30d273da4fb56a5`.
+Это только исправление упаковки диагностического кандидата; новый запуск не
+разрешён и не выполнялся.
 
 Локальный архив
 `/mnt/LocalDisk/Downloads/Linux/miui_LAVENDEREEAGlobal_V12.5.1.0.QFGEUXM_39f6c7990f_10.0.zip`
