@@ -92,8 +92,9 @@ jobs:
           LLVM_IAS: "1"
           CC: ccache clang
           HOSTCC: ccache clang
-          KCFLAGS: -fuse-ld=lld -Wno-default-const-init-field-unsafe -Wno-default-const-init-var-unsafe
+          KCFLAGS: -fuse-ld=lld -Wno-unknown-warning-option -Wno-default-const-init-field-unsafe -Wno-default-const-init-var-unsafe
         run: |
+          set -o pipefail
           jobs=$(nproc)
           mem=$(awk '/MemAvailable/ {print int($2/1024/1024)}' /proc/meminfo)
           [ "$mem" -lt 8 ] && jobs=2
@@ -109,7 +110,10 @@ jobs:
             make O=../out ARCH=arm64 LLVM=1 LLVM_IAS=1 \
               CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
               KCFLAGS="$KCFLAGS" -j"$jobs" Image.gz 2>&1 | tee ../build-image-gz.log
+            image_rc=${PIPESTATUS[0]}
+            test "$image_rc" -eq 0
           fi
+          test -s ../out/arch/arm64/boot/Image.gz
           ccache --show-stats
 
       - name: Verify kernel and PMSG configuration
