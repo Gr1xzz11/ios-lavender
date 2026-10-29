@@ -60,7 +60,7 @@ jobs:
           from pathlib import Path
           replacements = {
               'kernel/bpf/core.c': [
-                  ('{\\n\\t/*\\n\\t * Branch out to the JIT if available.\\n', '{\\n\\tu32 tmp;\\n\\t/*\\n\\t * Branch out to the JIT if available.\\n'),
+                  ('void *ptr;\n', 'void *ptr;\n\tu32 tmp;\n'),
                   ('const struct sk_buff *ctx', 'const void *ctx'),
               ],
               'sound/soc/codecs/wcd_cpe_services.c': [
