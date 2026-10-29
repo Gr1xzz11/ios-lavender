@@ -1,0 +1,158 @@
+name: RN7 diagnostic recovery kernel
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  KERNEL_REPO: https://github.com/andrey167/kernel_xiaomi_platinum.git
+  KERNEL_COMMIT: 4fd9bba237d0dbda45cfea1a0f63cbfa8079d129
+  DEFCONFIG_SHA256: 4400b12fb93b0885d786ee69286abbfb68a8833f775e4553850e22740f680192
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bc bison build-essential ccache flex gcc-aarch64-linux-gnu \
+            gcc-arm-linux-gnueabi libssl-dev libelf-dev lld llvm python3 device-tree-compiler
+
+      - name: Configure ccache
+        run: |
+          echo "CCACHE_DIR=$HOME/.cache/ccache" >> "$GITHUB_ENV"
+          ccache --set-config=max_size=5G
+          ccache --zero-stats
+
+      - name: Cache ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: rn7-kernel-${{ runner.os }}-${{ hashFiles('.github/workflows/rn7-recovery.yml') }}
+          restore-keys: rn7-kernel-${{ runner.os }}-
+
+      - name: Fetch exact kernel source
+        run: |
+          git clone --no-tags "$KERNEL_REPO" kernel
+          git -C kernel fetch --no-tags origin "$KERNEL_COMMIT"
+          git -C kernel checkout --detach "$KERNEL_COMMIT"
+          test "$(git -C kernel rev-parse HEAD)" = "$KERNEL_COMMIT"
+          test "$(git -C kernel fsck --full --no-progress 2>&1 | grep -c 'missing')" = 0
+
+      - name: Verify lavender defconfig
+        run: |
+          test -f kernel/arch/arm64/configs/lavender_defconfig
+          printf '%s  %s\n' "$DEFCONFIG_SHA256" kernel/arch/arm64/configs/lavender_defconfig | sha256sum -c -
+          grep -Fx 'CONFIG_PSTORE_RAM=y' kernel/arch/arm64/configs/lavender_defconfig
+          grep -Fx 'CONFIG_PSTORE_PMSG=y' kernel/arch/arm64/configs/lavender_defconfig
+          grep -Fx 'CONFIG_PSTORE_CONSOLE=y' kernel/arch/arm64/configs/lavender_defconfig
+
+      - name: Apply known Clang compatibility fixes
+        working-directory: kernel
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          replacements = {
+              'kernel/bpf/core.c': [
+                  ('{\\n\\t/*\\n\\t * Branch out to the JIT if available.\\n', '{\\n\\tu32 tmp;\\n\\t/*\\n\\t * Branch out to the JIT if available.\\n'),
+                  ('const struct sk_buff *ctx', 'const void *ctx'),
+              ],
+              'sound/soc/codecs/wcd_cpe_services.c': [
+                  ('enum cpe_process_result rc = CPE_SVC_FAILED;', 'enum cpe_process_result rc = (enum cpe_process_result)CPE_SVC_FAILED;'),
+                  ('return CPE_SVC_NO_MEMORY;', 'return (enum cmi_api_result)CPE_SVC_NO_MEMORY;'),
+              ],
+              'drivers/staging/qcacld-3.0/../qca-wifi-host-cmn/hif/src/ce/ce_main.c': [
+                  ('return A_ERROR;', 'return (QDF_STATUS)A_ERROR;'),
+              ],
+              'drivers/staging/qcacld-3.0/core/dp/htt/htt_h2t.c': [
+                  ('return A_ERROR; /* failure */', 'return (QDF_STATUS)A_ERROR; /* failure */'),
+              ],
+          }
+          for name, pairs in replacements.items():
+              p = Path(name)
+              s = p.read_text()
+              for old, new in pairs:
+                  if old not in s:
+                      raise SystemExit(f'missing expected source pattern: {name}: {old!r}')
+                  s = s.replace(old, new)
+              p.write_text(s)
+          PY
+
+      - name: Build kernel and preserve logs
+        working-directory: kernel
+        env:
+          ARCH: arm64
+          LLVM: "1"
+          LLVM_IAS: "1"
+          CC: ccache clang
+          HOSTCC: ccache clang
+          KCFLAGS: -fuse-ld=lld -Wno-default-const-init-field-unsafe -Wno-default-const-init-var-unsafe
+        run: |
+          jobs=$(nproc)
+          mem=$(awk '/MemAvailable/ {print int($2/1024/1024)}' /proc/meminfo)
+          [ "$mem" -lt 8 ] && jobs=2
+          [ "$jobs" -gt 4 ] && jobs=4
+          echo "Building with -j$jobs and MemAvailable=${mem}GiB"
+          make O=../out lavender_defconfig
+          make O=../out ARCH=arm64 LLVM=1 LLVM_IAS=1 \
+            CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
+            KCFLAGS="$KCFLAGS" -j"$jobs" Image.gz-dtb 2>&1 | tee ../build-image-gz-dtb.log
+          dtb_rc=${PIPESTATUS[0]}
+          if [ "$dtb_rc" -ne 0 ]; then
+            echo "Image.gz-dtb failed (rc=$dtb_rc); building Image.gz for stock-DTB integration"
+            make O=../out ARCH=arm64 LLVM=1 LLVM_IAS=1 \
+              CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
+              KCFLAGS="$KCFLAGS" -j"$jobs" Image.gz 2>&1 | tee ../build-image-gz.log
+          fi
+          ccache --show-stats
+
+      - name: Verify kernel and PMSG configuration
+        if: always()
+        run: |
+          mkdir -p artifacts
+          cp -a out/. artifacts/out/ 2>/dev/null || true
+          for f in out/arch/arm64/boot/Image.gz out/arch/arm64/boot/Image.gz-dtb out/vmlinux; do
+            [ -f "$f" ] && sha256sum "$f" | tee -a artifacts/SHA256SUMS
+          done
+          if [ -x kernel/scripts/extract-ikconfig ] && [ -f out/vmlinux ]; then
+            kernel/scripts/extract-ikconfig out/vmlinux > artifacts/kernel.config || true
+            grep -E '^CONFIG_PSTORE_(RAM|PMSG|CONSOLE)=' artifacts/kernel.config || true
+          fi
+          grep -E '^CONFIG_PSTORE_(RAM|PMSG|CONSOLE)=' out/.config 2>/dev/null | tee artifacts/build-config.txt || true
+
+      - name: Package recovery when public stock components are present
+        if: always()
+        run: |
+          mkdir -p artifacts/recovery
+          if [ -f recovery/stock-ramdisk.gz ] && [ -f recovery/stock-appended-dtb ]; then
+            echo "Public recovery components found; packaging is enabled by project tooling."
+            echo "Packaging implementation must preserve the checked-in stock header and fields."
+            echo "kernel/arch/arm64/boot/Image.gz + stock DTB packaging is not performed by this workflow yet." \
+              > artifacts/recovery/PACKAGING_BLOCKED.txt
+          else
+            echo "BLOCKED: private OrangeFox ramdisk/DTB are not in the public repository; no recovery.img was fabricated." \
+              > artifacts/recovery/PACKAGING_BLOCKED.txt
+          fi
+
+      - name: Collect source and build diagnostics
+        if: always()
+        run: |
+          git -C kernel rev-parse HEAD > artifacts/kernel-commit.txt 2>&1 || true
+          git -C kernel fsck --full --no-progress > artifacts/kernel-fsck.txt 2>&1 || true
+          cp -a build-*.log artifacts/ 2>/dev/null || true
+          cp -a kernel/.config artifacts/kernel.config.source 2>/dev/null || true
+          sha256sum kernel/arch/arm64/configs/lavender_defconfig > artifacts/defconfig.sha256 2>/dev/null || true
+          find artifacts -maxdepth 3 -type f -printf '%p %s bytes\n' | sort > artifacts/MANIFEST.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rn7-diagnostic-recovery-build
+          path: artifacts/
+          if-no-files-found: error
