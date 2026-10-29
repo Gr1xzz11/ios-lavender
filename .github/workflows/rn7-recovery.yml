@@ -101,10 +101,12 @@ jobs:
           [ "$jobs" -gt 4 ] && jobs=4
           echo "Building with -j$jobs and MemAvailable=${mem}GiB"
           make O=../out lavender_defconfig
+          set +e
           make O=../out ARCH=arm64 LLVM=1 LLVM_IAS=1 \
             CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
             KCFLAGS="$KCFLAGS" -j"$jobs" Image.gz-dtb 2>&1 | tee ../build-image-gz-dtb.log
           dtb_rc=${PIPESTATUS[0]}
+          set -e
           if [ "$dtb_rc" -ne 0 ]; then
             echo "Image.gz-dtb failed (rc=$dtb_rc); building Image.gz for stock-DTB integration"
             make O=../out ARCH=arm64 LLVM=1 LLVM_IAS=1 \
