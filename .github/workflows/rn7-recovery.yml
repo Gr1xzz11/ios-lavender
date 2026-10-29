@@ -122,10 +122,13 @@ jobs:
         if: always()
         run: |
           mkdir -p artifacts
-          cp -a out/. artifacts/out/ 2>/dev/null || true
           for f in out/arch/arm64/boot/Image.gz out/arch/arm64/boot/Image.gz-dtb out/vmlinux; do
-            [ -f "$f" ] && sha256sum "$f" | tee -a artifacts/SHA256SUMS
+            if [ -f "$f" ]; then
+              cp "$f" artifacts/
+              sha256sum "$f" | tee -a artifacts/SHA256SUMS
+            fi
           done
+          cp out/.config artifacts/build.config 2>/dev/null || true
           if [ -x kernel/scripts/extract-ikconfig ] && [ -f out/vmlinux ]; then
             kernel/scripts/extract-ikconfig out/vmlinux > artifacts/kernel.config || true
             grep -E '^CONFIG_PSTORE_(RAM|PMSG|CONSOLE)=' artifacts/kernel.config || true
