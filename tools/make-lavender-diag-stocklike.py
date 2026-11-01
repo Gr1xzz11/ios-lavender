@@ -38,7 +38,12 @@ def main() -> None:
     image = args.image.read_bytes()
     assert image[0x38:0x40] == b"ARM\x64\0\0\0\0"
     assert struct.unpack_from("<Q", image, 0x10)[0] == len(image)
-    compressed = gzip.compress(image, compresslevel=9, mtime=0)
+    compressed = bytearray(gzip.compress(image, compresslevel=9, mtime=0))
+    # Match the stock gzip member header.  The OS field is not part of the
+    # deflate stream, but keeping it identical avoids vendor decompressor
+    # quirks while preserving the generated payload.
+    compressed[9] = stock_kernel[9]
+    compressed = bytes(compressed)
     kernel = compressed + tail
     ramdisk_offset = h[7] + ((h[0] + PAGE - 1) // PAGE) * PAGE
     ramdisk = stock[ramdisk_offset:ramdisk_offset + h[2]]

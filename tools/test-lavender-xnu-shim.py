@@ -27,6 +27,37 @@ def main():
     assert "build.sh" not in build
     assert "lavender_loader.c" in build
     assert "lavender_console.c" in build
+    loader = (SHIM / "lavender_loader.c").read_text(encoding="utf-8")
+    assert "LAVENDER_LOADER_PSCI_RESET" in loader
+    assert "lavender_loader_checkpoint" in loader
+    assert "_head[]" in loader and "_end[]" in loader
+    assert "range_intersects" in loader
+    assert "ramdisk overlaps loader" in loader
+    assert "source_ranges[segment_source_index[j]].start" in loader
+    assert "ba->deviceTreeP = kernel_pa;" in loader
+    assert "ba->deviceTreeP = kernel_pa - pa_delta" not in loader
+    assert "DTB overlaps XNU managed RAM" not in loader
+    assert "DTB overlaps loader" in loader
+    stage1_build = (SHIM / "build-lavender-loader-stage1-reset.sh").read_text(encoding="utf-8")
+    assert "LAVENDER_LOADER_STAGE1_RESET" in stage1_build
+    stage2_build = (SHIM / "build-lavender-loader-stage2-reset.sh").read_text(encoding="utf-8")
+    assert "LAVENDER_LOADER_STAGE2_RESET" in stage2_build
+    final_build = (SHIM / "build-lavender-xnu-boot.sh").read_text(encoding="utf-8")
+    assert "lavender_shim.c" in final_build
+    assert "LAVENDER_LOADER_PSCI_RESET" not in final_build
+    assert "lavender_loader_psci_reset_shim.c" not in final_build
+    assert "LAVENDER_LOADER_NO_UART" in final_build
+    assert "lavender_console.c" not in final_build
+    assert "lavender_loader_diag_reset" in loader
+    reset_build = (SHIM / "build-lavender-loader-psci-reset.sh").read_text(encoding="utf-8")
+    reset_shim = (SHIM / "lavender_loader_psci_reset_shim.c").read_text(encoding="utf-8")
+    reset_impl = (SHIM / "lavender_loader_psci_reset.c").read_text(encoding="utf-8")
+    assert "-DLAVENDER_LOADER_PSCI_RESET" in reset_build
+    assert "make-lavender-loader-ramdisk.py" in reset_build
+    assert "PSCI_SYSTEM_RESET" in reset_impl and "smc #0" in reset_impl
+    assert "LOAD ERROR" in reset_shim and "for (;;" in reset_shim
+    assert "LAVENDER_LOADER_STAGE1_RESET" in reset_shim
+    assert "LAVENDER_LOADER_STAGE1_RESET" in reset_impl and "LAVENDER_LOADER_STAGE2_RESET" in reset_impl
     assert "--header_version 1" in noramdisk
     assert "--ramdisk /dev/null" in noramdisk
     assert "check-lavender-bootv1-noramdisk.py" in noramdisk

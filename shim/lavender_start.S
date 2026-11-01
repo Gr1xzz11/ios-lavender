@@ -8,7 +8,8 @@
 _head:
 	b	_start
 	.long	0
-	.quad	0
+	/* Match stock lavender's ARM64 Image placement contract. */
+	.quad	0x80000		/* text_offset */
 	.quad	_end
 	.quad	0xa
 	.quad	0

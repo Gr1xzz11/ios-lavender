@@ -1,3 +1,48 @@
+### >>> UPDATE 2026-11-01: live recovery PMSG baseline captured on Windows <<<
+
+- Fixed collector crash on Windows PowerShell 5.1: ProcessStartInfo.ArgumentList
+  is absent in .NET Framework. Compatible Arguments quoting now works in 5.1/7.
+- Found exec-out loses remote exit/stderr, while shell -T changed binary CR/LF.
+  Added verified status/stderr framing around binary exec-out; real-device byte,
+  missing-file, empty-output and quoting regressions pass on PS 5.1 and 7.6.5.
+- Final capture: research/lavender/.artifacts/historical-control-before/
+  attempt-20261101-185338-146. Completed 29 reads, 27 successful; /dev/mem and
+  console record are absent and correctly reported as remote exit=1.
+- Current recovery kernel 4.4.302-lineageos has PSTORE/PMSG/CONSOLE/RAM enabled.
+  PMSG base 0xA0200000, size 0x200000 confirmed. Logical pmsg is full capacity
+  (2097140 bytes), contains saved Android logs and no XNU/LAVENDER markers.
+- Remote/local PMSG and recovery partition hashes agree. Partition prefix
+  exactly matches the recovered f07d6971... diagnostic image; its embedded
+  config equals the running config. Whole-partition tail is nonzero.
+- No reboot, flash, temporary boot, build, CI or device write performed.
+  Next: verify exact persistent_ram start/size writer/reader ABI; exported
+  pstore lacks the raw header and does not replace a pre-zap snapshot.
+- Full report is in this Codex chat workspace outputs/PMSG-RECOVERY-BASELINE.md.
+
+### >>> UPDATE 2026-11-01: Windows recovery integration, no device operations <<<
+
+- Integrated recovered lavender loader dependencies, PMSG/reset/preloader/timer
+  sources and diagnostic wrappers without deleting existing tools. Full local
+  inventory, evidence limits and exact next experiment are documented in
+  docs/RECOVERY-INTEGRATION-2026-11-01.md.
+- Verified recovered original ARM64 XNU Mach-O SHA256 40a9f79d... and historical
+  boot image SHA256 3269975b...; all 9 selected artifact/reference hashes match.
+  231 source/script/document CRCs match archive entries. All 13 reported damaged
+  project artifacts still fail CRC; they remain preserved and are not trusted.
+- Historical B20261028_1700 PMSG supports instrumented XNU entry and completion
+  of original msr OSLAR_EL1,xzr. Full XNU initialization / iOS boot is NOT proven.
+  Later missing SHIM/XNU markers do not identify an XNU checkpoint failure.
+- Windows AST/shell/include/dependency/static checks pass; target clang and
+  runtime verification are unavailable/not performed. No builds, CI, flashing,
+  temporary device boots, pushes, resets or cleans were executed.
+- Backups are outside this repository under the Codex chat workspace work/
+  backup-before-integration. Added a binary-safe read-only PowerShell collector.
+- Next: capture current recovery/PMSG provenance; only if baseline lacks
+  @B20261028_1700 and the channel/provenance checks pass, perform ONE future
+  temporary fastboot boot of the unchanged historical image, return manually to
+  the same recovery, compare before/after. Commands and stop conditions are in
+  the report. Do not substitute flash if temporary boot fails.
+
 # iOS 16 on sweet (Redmi Note 10 Pro, SM7150) - working notes
 
 ### >>> UPDATE 2026-10-27: recovery boot provenance confirmed <<<

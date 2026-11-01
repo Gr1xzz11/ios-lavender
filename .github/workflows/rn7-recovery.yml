@@ -84,6 +84,29 @@ jobs:
               p.write_text(s)
           PY
 
+      - name: Apply bounded PMSG pre-zap instrumentation
+        run: |
+          python3 tools/patch-kernel-pmsg-prezap.py
+          test -s kernel/fs/pstore/ram_core.c
+          grep -q lavender_capture_prezap kernel/fs/pstore/ram_core.c
+          grep -q lavender_prezap kernel/include/linux/pstore_ram.h
+
+      - name: Compile-check instrumented ram_core.o
+        working-directory: kernel
+        env:
+          ARCH: arm64
+          LLVM: "1"
+          LLVM_IAS: "1"
+          CC: ccache clang
+          HOSTCC: ccache clang
+          KCFLAGS: -fuse-ld=lld -Wno-unknown-warning-option -Wno-default-const-init-field-unsafe -Wno-default-const-init-var-unsafe
+        run: |
+          make O=../out lavender_defconfig
+          make O=../out ARCH=arm64 LLVM=1 LLVM_IAS=1 \
+            CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
+            KCFLAGS="$KCFLAGS" -j2 fs/pstore/ram_core.o
+          test -s ../out/fs/pstore/ram_core.o
+
       - name: Build kernel and preserve logs
         working-directory: kernel
         env:
@@ -134,6 +157,12 @@ jobs:
             grep -E '^CONFIG_PSTORE_(RAM|PMSG|CONSOLE)=' artifacts/kernel.config || true
           fi
           grep -E '^CONFIG_PSTORE_(RAM|PMSG|CONSOLE)=' out/.config 2>/dev/null | tee artifacts/build-config.txt || true
+          grep -Fx 'CONFIG_DEBUG_FS=y' out/.config
+          grep -Fx 'CONFIG_PSTORE_RAM=y' out/.config
+          nm out/vmlinux | grep -E 'lavender_capture_prezap|lavender_prezap' | tee artifacts/prezap-symbols.txt
+          cp kernel/fs/pstore/ram_core.c artifacts/ram_core.instrumented.c
+          cp kernel/include/linux/pstore_ram.h artifacts/pstore_ram.instrumented.h
+          cp tools/patch-kernel-pmsg-prezap.py artifacts/patch-kernel-pmsg-prezap.py
 
       - name: Package recovery when public stock components are present
         if: always()
