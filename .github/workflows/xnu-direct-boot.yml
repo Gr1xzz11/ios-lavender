@@ -1,0 +1,52 @@
+name: lavender-xnu-direct-boot
+on:
+  workflow_dispatch:
+    inputs:
+      kernel_url:
+        description: Immutable HTTPS URL for kernel.development.lavender
+        required: true
+        type: string
+      kernel_sha256:
+        description: SHA256 of the XNU Mach-O
+        required: true
+        type: string
+      boot_url:
+        description: Immutable HTTPS URL for original lavender boot.img
+        required: true
+        type: string
+      boot_sha256:
+        description: SHA256 of boot.img
+        required: true
+        type: string
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install LLVM
+        run: brew install llvm
+      - name: Fetch and verify inputs
+        env:
+          KURL: ${{ inputs.kernel_url }}
+          KSHA: ${{ inputs.kernel_sha256 }}
+          BURL: ${{ inputs.boot_url }}
+          BSHA: ${{ inputs.boot_sha256 }}
+        run: |
+          curl --fail --location --retry 3 "$KURL" -o kernel.development.lavender
+          curl --fail --location --retry 3 "$BURL" -o lavender-boot.img
+          echo "$KSHA  kernel.development.lavender" | shasum -a 256 -c -
+          echo "$BSHA  lavender-boot.img" | shasum -a 256 -c -
+      - name: Generate ADT
+        run: python3 tools/mkadt.py lavender.adt --profile lavender --highmem
+      - name: Build direct XNU boot image
+        env:
+          CC: /opt/homebrew/opt/llvm/bin/clang
+          OBJCOPY: /opt/homebrew/opt/llvm/bin/llvm-objcopy
+          NM: /opt/homebrew/opt/llvm/bin/llvm-nm
+        run: |
+          ./shim/build-lavender-xnu-boot.sh kernel.development.lavender lavender.adt out/lavender-xnu-boot lavender-boot.img
+          shasum -a 256 out/lavender-xnu-boot/lavender-xnu-boot.img | tee out/lavender-xnu-boot/SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lavender-xnu-direct-boot
+          path: out/lavender-xnu-boot
