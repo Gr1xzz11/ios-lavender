@@ -1,23 +1,7 @@
 name: lavender-xnu-direct-boot
 on:
   workflow_dispatch:
-    inputs:
-      kernel_url:
-        description: Immutable HTTPS URL for kernel.development.lavender
-        required: true
-        type: string
-      kernel_sha256:
-        description: SHA256 of the XNU Mach-O
-        required: true
-        type: string
-      boot_url:
-        description: Immutable HTTPS URL for original lavender boot.img
-        required: true
-        type: string
-      boot_sha256:
-        description: SHA256 of boot.img
-        required: true
-        type: string
+
 jobs:
   build:
     runs-on: macos-15
@@ -27,10 +11,10 @@ jobs:
         run: brew install llvm
       - name: Fetch and verify inputs
         env:
-          KURL: ${{ inputs.kernel_url }}
-          KSHA: ${{ inputs.kernel_sha256 }}
-          BURL: ${{ inputs.boot_url }}
-          BSHA: ${{ inputs.boot_sha256 }}
+          KURL: https://github.com/Gr1xzz11/ios-lavender/releases/download/xnu-direct-inputs-20261101/kernel.development.lavender
+          KSHA: 40a9f79d3dbf63344d5dd3365dbcb2ced9298f06e86332840c93d45e48683cd5
+          BURL: https://github.com/Gr1xzz11/ios-lavender/releases/download/xnu-direct-inputs-20261101/lavender-boot.img
+          BSHA: 58aae5d8dbae3358cb4d83997ea0d5c1536a06214f933fea22a81758b2ed44d6
         run: |
           curl --fail --location --retry 3 "$KURL" -o kernel.development.lavender
           curl --fail --location --retry 3 "$BURL" -o lavender-boot.img
