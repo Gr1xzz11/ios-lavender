@@ -37,7 +37,7 @@ jobs:
           echo "$KSHA  kernel.development.lavender" | shasum -a 256 -c -
           echo "$BSHA  lavender-boot.img" | shasum -a 256 -c -
       - name: Generate ADT
-        run: python3 tools/mkadt.py lavender.adt --profile lavender --highmem
+        run: python3 tools/mkadt.py lavender.adt --profile lavender
       - name: Build direct XNU boot image
         env:
           CC: /opt/homebrew/opt/llvm/bin/clang
